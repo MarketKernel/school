@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Школа</title>
+<meta name="description" content="Учебные игры и тренажёры для детей: чтение, счёт и не только.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎒</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #3d2b2f;
+    --muted: #8b7576;
+    --sky: #d7f0ff;
+    --cream: #fff8ec;
+    --card: #ffffff;
+    --card-border: #eadfcd;
+    --accent: #ff7096;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(180deg, var(--sky) 0%, var(--cream) 50%) fixed;
+    color: var(--ink);
+    font-family: "Nunito", system-ui, sans-serif;
+    font-weight: 600;
+  }
+
+  main { max-width: 1040px; margin: 0 auto; padding: 40px 16px 64px; }
+
+  header { text-align: center; margin-bottom: 32px; }
+  h1 { font-size: clamp(36px, 7vw, 56px); font-weight: 900; margin: 0; letter-spacing: -0.5px; }
+  .lead { color: var(--muted); font-size: 18px; margin: 8px 0 0; }
+
+  .subject { margin-top: 32px; }
+  h2 { font-size: 24px; font-weight: 900; margin: 0 0 14px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+
+  .card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto 1fr;
+    column-gap: 14px;
+    row-gap: 4px;
+    padding: 18px;
+    background: var(--card);
+    border: 3px solid var(--card-border);
+    border-radius: 20px;
+    color: inherit;
+    text-decoration: none;
+    box-shadow: 0 4px 0 var(--card-border);
+    transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  }
+  .card:hover, .card:focus-visible { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 7px 0 var(--accent); outline: none; }
+  .card:active { transform: translateY(1px); box-shadow: 0 2px 0 var(--accent); }
+
+  .card-icon { grid-row: span 2; font-size: 44px; line-height: 1; }
+  .card-title { font-size: 21px; font-weight: 900; }
+  .card-text { color: var(--muted); font-size: 15px; line-height: 1.35; }
+
+  .empty { text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🎒 Школа</h1>
+    <p class="lead">Учебные игры и тренажёры для детей</p>
+  </header>
+<!-- LESSONS -->
+</main>
+</body>
+</html>

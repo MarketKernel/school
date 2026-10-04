@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<!-- The page lives in tools/, while sounds, pictures and lists are in the lesson folder: all paths are relative to it -->
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мой голос</title>
+<link rel="icon" href="data:,">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; background: #fafafa; color: #222; }
+  main { padding: 0 16px 48px; }
+  .panel { position: sticky; top: 0; z-index: 1; background: #fafafa; border-bottom: 1px solid #ddd;
+           padding: 12px 16px; margin: 0 -16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .current { font-size: 64px; font-weight: 800; min-width: 110px; text-align: center; line-height: 1; }
+  button { font: inherit; font-size: 17px; padding: 8px 14px; border-radius: 10px; border: 2px solid #ccc;
+           background: #fff; cursor: pointer; }
+  button:disabled { opacity: .4; cursor: default; }
+  #rec { border-color: #ef4444; color: #ef4444; font-size: 20px; padding: 10px 20px;
+         touch-action: none; user-select: none; -webkit-user-select: none; }
+  #rec.on { background: #ef4444; color: #fff; }
+  #apply { border-color: #16a34a; color: #16a34a; margin-left: auto; }
+  .opts { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: #555; }
+  #status { width: 100%; margin: 0; min-height: 1.3em; color: #555; font-size: 15px; }
+  #status.err { color: #dc2626; }
+  h2 { margin: 22px 0 8px; font-size: 18px; color: #555; }
+  .grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .item { font-size: 26px; min-width: 64px; padding: 8px 12px; border: 2px solid #ccc; border-radius: 12px;
+          background: #fff; cursor: pointer; position: relative; }
+  .item.recorded { border-color: #16a34a; background: #f0fdf4; }
+  .item.recorded::after { content: "●"; color: #16a34a; font-size: 10px; position: absolute; top: 3px; right: 5px; }
+  .item.selected { outline: 3px solid #3b82f6; outline-offset: 1px; }
+  .hint { color: #777; font-size: 14px; margin: 12px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <div class="panel">
+    <div class="current" id="current">—</div>
+    <button id="play-game" title="Как звучит сейчас в игре">▶ в игре</button>
+    <button id="play-my" title="Как звучит в наборе «мой голос»">▶ мой</button>
+    <button id="rec">● Запись</button>
+    <div class="opts">
+      <label><input type="checkbox" id="process" checked> обрезать тишину и выровнять громкость</label>
+      <label><input type="checkbox" id="auto-next" checked> после записи — к следующему</label>
+    </div>
+    <button id="apply" title="Сделать «мой голос» рабочим набором и пересобрать игру">Поставить мой голос в игру</button>
+    <p id="status"></p>
+  </div>
+
+  <p class="hint">Клик по букве или слогу — выбрать и послушать, как звучит сейчас.
+    Запись — пока держите пробел или кнопку «Запись»; отпустили — запись сохраняется. ← → — предыдущий/следующий.
+    Зелёные — уже записаны твоим голосом (<span id="count">0</span> из <span id="total">0</span>).</p>
+
+  <h2>Буквы</h2><div class="grid" id="letters"></div>
+  <h2>Мягкие согласные</h2><div class="grid" id="soft"></div>
+  <h2>Слоги</h2><div class="grid" id="syllables"></div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const KINDS = ["letters", "soft", "syllables"];
+let gameFiles = {};    // sound -> file in the working set audio/
+let myFiles = {};      // sound -> file in audio/My/
+let recorded = {};     // what has already been recorded with one's own voice
+let order = [];        // all sounds in order — for ← →
+let buttons = {};
+let selected = null;
+let stream = null, recorder = null, chunks = [];
+let holding = false;   // the record button is currently held
+let startedAt = 0;
+const MIN_MS = 300;    // anything shorter is an accidental press and is not saved
+const TAIL_MS = 250;   // keep recording briefly after release so the end of the sound isn't cut
+let player;
+
+function play(url) {
+  player?.pause();
+  player = new Audio(url + "?t=" + Date.now());  // bypass the cache: the file may have just changed
+  player.play();
+}
+
+function status(text, isError = false) {
+  $("status").textContent = text;
+  $("status").className = isError ? "err" : "";
+}
+
+async function api(path, body) {
+  const res = await fetch(path, { method: "POST", body });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error);
+  return data;
+}
+
+// ---------- List ----------
+
+function refreshCount() {
+  $("count").textContent = Object.keys(recorded).length;
+  $("total").textContent = order.length;
+  for (const [item, btn] of Object.entries(buttons)) btn.classList.toggle("recorded", item in recorded);
+}
+
+function select(item, { silent = false } = {}) {
+  if (recorder) return;  // don't switch while recording
+  buttons[selected]?.classList.remove("selected");
+  selected = item;
+  buttons[item].classList.add("selected");
+  buttons[item].scrollIntoView({ block: "nearest" });
+  $("current").textContent = item;
+  if (!silent) play(`audio/${gameFiles[item]}`);
+}
+
+async function load() {
+  ({ recorded } = await api("/api/my/init"));
+  for (const kind of KINDS) {
+    const [game, my] = await Promise.all([`audio/${kind}.json`, `audio/My/${kind}.json`]
+      .map(u => fetch(u).then(r => (r.ok ? r.json() : {}))));
+    Object.assign(gameFiles, game);
+    Object.assign(myFiles, my);
+    for (const item of Object.keys(my)) {
+      const btn = document.createElement("button");
+      btn.className = "item";
+      btn.textContent = item;
+      btn.onclick = () => select(item);
+      buttons[item] = btn;
+      order.push(item);
+      $(kind).append(btn);
+    }
+  }
+  refreshCount();
+  select(order[0], { silent: true });
+}
+
+// ---------- Recording ----------
+
+async function startRecording() {
+  if (!selected || holding) return;
+  holding = true;
+  try {
+    // Open the microphone once and keep it open so recording starts without delay
+    stream ??= await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    });
+  } catch (e) {
+    holding = false;
+    status("Нет доступа к микрофону: " + e.message, true);
+    return;
+  }
+  // The button was released while the browser was asking for permission
+  if (!holding) return status("Микрофон включён — теперь держите кнопку и говорите");
+  player?.pause();
+  const item = selected;
+  chunks = [];
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.onstop = () => save(item, new Blob(chunks));
+  recorder.start();
+  startedAt = Date.now();
+  $("rec").classList.add("on");
+  $("rec").textContent = "● Говорите…";
+  status(`Говорите «${item}»…`);
+}
+
+function stopRecording() {
+  if (!holding) return;
+  holding = false;
+  $("rec").classList.remove("on");
+  $("rec").textContent = "● Запись";
+  const rec = recorder;
+  recorder = null;
+  if (!rec) return;  // the microphone isn't open yet
+  if (Date.now() - startedAt < MIN_MS) {
+    rec.onstop = null;
+    rec.stop();
+    return status("Слишком коротко: держите кнопку, пока говорите");
+  }
+  setTimeout(() => rec.stop(), TAIL_MS);
+}
+
+/** The browser records webm/mp4 — convert to WAV (mono, 16-bit). */
+async function toWav(blob) {
+  const ctx = new AudioContext();
+  const audio = await ctx.decodeAudioData(await blob.arrayBuffer());
+  ctx.close();
+  const data = audio.getChannelData(0);
+  const buffer = new ArrayBuffer(44 + data.length * 2);
+  const v = new DataView(buffer);
+  const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  str(0, "RIFF"); v.setUint32(4, 36 + data.length * 2, true); str(8, "WAVE");
+  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, audio.sampleRate, true); v.setUint32(28, audio.sampleRate * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, "data"); v.setUint32(40, data.length * 2, true);
+  data.forEach((x, i) => v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x)) * 0x7fff, true));
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
+async function save(item, blob) {
+  status(`Сохраняю «${item}»…`);
+  try {
+    const process = $("process").checked ? 1 : 0;
+    const data = await api(`/api/my/record?item=${encodeURIComponent(item)}&process=${process}`, await toWav(blob));
+    recorded = data.recorded;
+    myFiles[item] = data.file.replace(/^audio\/My\//, "");
+    refreshCount();
+    play(data.file);
+    status(`«${item}» сохранено`);
+    if ($("auto-next").checked) {
+      const next = order[order.indexOf(item) + 1];
+      if (next) select(next, { silent: true });
+    }
+  } catch (e) {
+    status("Ошибка: " + e.message, true);
+  }
+}
+
+// ---------- Buttons ----------
+
+// Recording runs while the button is held. Pointer capture makes a release outside the button count too
+$("rec").addEventListener("pointerdown", e => {
+  if (e.button !== 0) return;
+  $("rec").setPointerCapture(e.pointerId);
+  startRecording();
+});
+$("rec").addEventListener("pointerup", stopRecording);
+$("rec").addEventListener("pointercancel", stopRecording);
+$("rec").addEventListener("contextmenu", e => e.preventDefault());  // a long finger press must not open the context menu
+window.addEventListener("blur", stopRecording);  // leaving the window with the button held means no release event will come
+$("play-game").onclick = () => selected && play(`audio/${gameFiles[selected]}`);
+$("play-my").onclick = () => selected && play(`audio/My/${myFiles[selected]}`);
+$("apply").onclick = async () => {
+  status("Ставлю «мой голос» в игру…");
+  try {
+    const data = await api("/api/my/apply");
+    status(data.built ? "Готово: игра звучит твоим голосом (незаписанное — как раньше)." : "Сборка не удалась: " + data.buildLog,
+           !data.built);
+  } catch (e) {
+    status("Ошибка: " + e.message, true);
+  }
+};
+
+// Space: press to record, release to stop. preventDefault keeps Space from "clicking" the focused button
+document.addEventListener("keyup", e => {
+  if (e.code !== "Space") return;
+  e.preventDefault();
+  stopRecording();
+});
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  if (e.code === "Space") {
+    e.preventDefault();
+    if (!e.repeat) startRecording();  // a held key fires repeated keydown events
+  }
+  const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+  if (step && !recorder) {
+    e.preventDefault();
+    const next = order[order.indexOf(selected) + step];
+    if (next) select(next);
+  }
+});
+
+load().catch(e => status("Не удалось загрузить: " + e.message + ". Запущен ли record_server.py?", true));
+</script>
+</body>
+</html>

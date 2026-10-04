@@ -1,0 +1,9 @@
+{
+  "title": "Собери слово",
+  "description": "Читаем по слогам: собираем слова из сказки «Три поросёнка» и строим три домика.",
+  "subject": "Чтение",
+  "icon": "🐷",
+  "order": 10,
+  "build": "cd game && npm ci && npm run build",
+  "publish": "game/build"
+}
