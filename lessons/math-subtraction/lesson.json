@@ -1,0 +1,9 @@
+{
+  "title": "Вычитание",
+  "description": "Сложение наоборот: 12 − 5, 9 − 4… Ответ — от 0 до 9. На каждый пример — 3 секунды.",
+  "subject": "Математика",
+  "icon": "➖",
+  "order": 21,
+  "build": "(cd ../math-drill/game && npm ci) && node ../math-drill/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

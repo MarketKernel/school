@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- The title and icon placeholders are filled from the lesson's lesson.json (build_scripts/build.mjs) -->
+<title>__TITLE__</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>__ICON__</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="score" aria-label="Счёт">
+    <span class="chip" title="Пример из раунда"><span id="progress">0 / 0</span></span>
+    <span class="chip ok" title="Верных ответов">✅ <span id="right">0</span></span>
+    <span class="chip bad" title="Ошибок и пропущенных">❌ <span id="wrong">0</span></span>
+    <span class="chip" title="Среднее время верного ответа">⏱ <span id="avg">—</span></span>
+  </div>
+</header>
+
+<main>
+  <section id="paper" class="paper" aria-live="polite"></section>
+  <div class="timer" aria-hidden="true"><div id="timer-fill" class="timer-fill"></div></div>
+  <p id="message" role="status"></p>
+  <section id="options" class="options" aria-label="Ответы"></section>
+</main>
+
+<div id="overlay" class="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
+    <div id="overlay-icon" class="card-icon"></div>
+    <h2 id="overlay-title"></h2>
+    <p id="overlay-text"></p>
+    <button id="overlay-btn" class="btn primary"></button>
+  </div>
+</div>
+
+<div id="confetti" class="confetti" aria-hidden="true"></div>
+
+<!-- Classic scripts, not modules: this way the drill also opens by double-click, without a server -->
+<script src="data.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

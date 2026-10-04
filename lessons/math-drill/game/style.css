@@ -1,0 +1,225 @@
+/* Arithmetic drill — the example is written in a squared school notebook */
+
+:root {
+  --ink: #3d2b2f;
+  --muted: #8b7576;
+  --sky: #d7f0ff;
+  --cream: #fff8ec;
+  --line: #cfe3f5;         /* notebook grid */
+  --ok: #22a35a;
+  --ok-bg: #dcf8e7;
+  --bad: #e5484d;
+  --bad-bg: #ffe4e4;
+  --border: #eadfcd;
+  --accent: #ff7096;       /* each operation has its own colour, see body[data-op] */
+  --accent-dark: #e04f78;
+  --accent-soft: #ffe1ea;
+}
+
+body[data-op="sub"] { --accent: #4aa3df; --accent-dark: #2f86c0; --accent-soft: #dcefff; }
+body[data-op="mul"] { --accent: #f2a516; --accent-dark: #d18a00; --accent-soft: #fff1c9; }
+body[data-op="div"] { --accent: #9b7be0; --accent-dark: #7c5cc4; --accent-soft: #ece5ff; }
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--sky) 0%, var(--cream) 55%) fixed;
+  color: var(--ink);
+  font-family: "Nunito", ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+  /* Notebook cell size; --cols (cells across the paper) is set on body from the script */
+  --cell: min(88px, calc((100vw - 32px) / var(--cols, 8)));
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+button:disabled { cursor: default; }
+
+/* ---------- Score ---------- */
+
+header { padding: 14px 16px 0; }
+
+.score {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chip {
+  padding: 6px 16px;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 999px;
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Notebook paper ---------- */
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 16px 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.paper {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 8), var(--cell));
+  grid-template-rows: repeat(3, var(--cell));
+  background:
+    linear-gradient(to right, var(--line) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
+    linear-gradient(to bottom, var(--line) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
+    #fff;
+  border-radius: calc(var(--cell) * 0.25);
+  box-shadow: 0 6px 0 var(--accent-soft), 0 10px 24px rgba(61, 43, 47, 0.08);
+  overflow: hidden;
+}
+
+.cell {
+  grid-row: 2;
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--cell) * 0.82);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.answer {
+  margin: 2px;
+  border: 4px solid var(--accent);
+  border-radius: calc(var(--cell) * 0.18);
+  background: color-mix(in srgb, var(--accent-soft) 60%, transparent);
+}
+.answer.ok { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); animation: pop 0.3s ease-out; }
+.answer.bad { border-color: var(--bad); background: var(--bad-bg); animation: pop 0.3s ease-out; }
+
+/* ---------- Timer ---------- */
+
+.timer {
+  width: calc(var(--cell) * var(--cols, 8));
+  height: 14px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.timer-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+  transform-origin: left;
+}
+.timer-fill.hurry { background: var(--bad); }
+
+#message { margin: 0; min-height: 1.4em; font-size: 28px; font-weight: 900; text-align: center; }
+#message.ok { color: var(--ok); animation: pop 0.3s ease-out; }
+#message.bad { color: var(--bad); }
+
+/* ---------- Answers ---------- */
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 150px));
+  gap: 16px;
+  width: 100%;
+  justify-content: center;
+}
+
+.option {
+  padding: 16px 0;
+  font-size: 52px;
+  font-weight: 900;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  background: #fff;
+  border: 4px solid var(--accent-soft);
+  border-radius: 24px;
+  box-shadow: 0 6px 0 var(--accent);
+  transition: transform 0.1s, box-shadow 0.1s, opacity 0.2s;
+}
+.option:hover:not(:disabled) { transform: translateY(-3px); }
+.option:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 1px 0 var(--accent); }
+.option:disabled { color: var(--ink); }
+.option.ok { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); box-shadow: 0 6px 0 var(--ok); }
+.option.bad { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); box-shadow: 0 6px 0 var(--bad); }
+.option.dim { opacity: 0.35; }
+
+/* ---------- Start and results dialogs ---------- */
+
+.btn {
+  font-size: 21px;
+  font-weight: 800;
+  padding: 12px 30px;
+  border-radius: 999px;
+  border: 3px solid var(--border);
+  background: #fff;
+  box-shadow: 0 4px 0 var(--border);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--border); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 4px 0 var(--accent-dark); }
+.btn.primary:active { box-shadow: 0 1px 0 var(--accent-dark); }
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(61, 43, 47, 0.35);
+}
+.overlay[hidden] { display: none; }
+.card {
+  max-width: 440px;
+  width: 100%;
+  padding: 28px 24px;
+  background: #fff;
+  border-radius: 28px;
+  text-align: center;
+  box-shadow: 0 10px 0 var(--accent-soft), 0 20px 50px rgba(0, 0, 0, 0.2);
+  animation: pop 0.35s ease-out;
+}
+.card-icon { font-size: 84px; line-height: 1.1; }
+.card h2 { margin: 10px 0 6px; font-size: 30px; font-weight: 900; }
+.card p { margin: 0 0 22px; color: var(--muted); font-size: 18px; }
+
+/* ---------- Confetti ---------- */
+
+.confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 20; }
+.confetti span { position: absolute; top: -50px; animation: fall 1.8s ease-in forwards; }
+
+/* ---------- Animations ---------- */
+
+@keyframes pop { 0% { transform: scale(0.85); } 70% { transform: scale(1.06); } 100% { transform: scale(1); } }
+@keyframes fall {
+  to { transform: translate(var(--drift, 0), 110vh) rotate(540deg); opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ---------- Phone ---------- */
+
+@media (max-width: 700px) {
+  header { padding: 10px 8px 0; }
+  .score { gap: 6px; }
+  .chip { font-size: 16px; padding: 4px 11px; }
+  main { padding: 18px 16px 70px; gap: 12px; }
+  .timer { height: 10px; }
+  #message { font-size: 21px; }
+  .options { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 400px; }
+  .option { font-size: 44px; padding: 12px 0; border-radius: 20px; }
+}

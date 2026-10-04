@@ -1,0 +1,9 @@
+{
+  "title": "Умножение",
+  "description": "Таблица умножения от 0 до 9. На каждый пример — 3 секунды.",
+  "subject": "Математика",
+  "icon": "✖️",
+  "order": 22,
+  "build": "(cd ../math-drill/game && npm ci) && node ../math-drill/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

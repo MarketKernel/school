@@ -1,0 +1,9 @@
+{
+  "title": "Деление",
+  "description": "Таблица умножения наоборот: делим без остатка. На каждый пример — 3 секунды.",
+  "subject": "Математика",
+  "icon": "➗",
+  "order": 23,
+  "build": "(cd ../math-drill/game && npm ci) && node ../math-drill/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

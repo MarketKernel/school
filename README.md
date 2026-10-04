@@ -7,6 +7,12 @@
 | Урок | Раздел | Папка |
 |---|---|---|
 | 🐷 Собери слово — чтение по слогам | Чтение | [lessons/read-syllables](lessons/read-syllables) |
+| ➕ Сложение — числа от 0 до 9 | Математика | [lessons/math-addition](lessons/math-addition) |
+| ➖ Вычитание — сложение наоборот | Математика | [lessons/math-subtraction](lessons/math-subtraction) |
+| ✖️ Умножение — таблица от 0 до 9 | Математика | [lessons/math-multiplication](lessons/math-multiplication) |
+| ➗ Деление — умножение наоборот | Математика | [lessons/math-division](lessons/math-division) |
+
+Тренажёры на счёт собираются из общего движка [lessons/math-drill](lessons/math-drill): новый тренажёр — это папка с `lesson.json` и `drill.json`, без своего кода.
 
 ## Как устроено
 
