@@ -2,7 +2,7 @@
   "op": "add",
   "from": 0,
   "to": 9,
-  "seconds": 3,
+  "seconds": 5,
   "levels": [
     {"name": "до 5", "hint": "Сумма до 5", "upTo": 5},
     {"name": "до 10", "hint": "Сумма от 6 до 10", "upTo": 10},
