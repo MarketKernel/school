@@ -1,17 +1,18 @@
 """Draws pictures for a reading lesson's words with the OpenAI Images API.
 
-What to draw: <lesson>/data/pictures.tsv (level, word, description); the shared style of the lesson's
-pictures: "pictureStyle" in <lesson>/game.json.
+What to draw: <folder>/data/pictures.tsv (level, word, description); the shared style of the pictures:
+"pictureStyle" in <folder>/game.json. The folder is a lesson, or a shared word folder (lessons/potter) that keeps
+pictureStyle in its shared.json.
 Key: OPENAI_API_KEY from the environment or from the .env file at the repo root.
 
-Output (in the lesson folder):
+Output (in that folder):
     images/domik.jpg, …   images.json — word -> file
 
-Usage (the lesson is a folder name under lessons/ or a path):
-    python3 draw.py read-potter                    # draw everything that's missing
-    python3 draw.py read-potter --limit 3          # first 3 — to check the style
+Usage (a folder name under lessons/ or a path):
+    python3 draw.py potter                         # draw everything that's missing
+    python3 draw.py potter --limit 3               # first 3 — to check the style
     python3 draw.py read-syllables --redo домик,лето   # redraw these words
-    python3 draw.py read-potter --force            # redraw everything
+    python3 draw.py potter --force                 # redraw everything
 """
 
 import argparse
@@ -42,9 +43,10 @@ DEFAULTS = {
     "OPENAI_IMAGE_QUALITY": "low",  # low / medium / high — low is enough for 256 px
 }
 
-# The shared style of a lesson's pictures is "pictureStyle" in its game.json. Write it so that the model draws
-# only what the description says: characters of the story belong in the style only as an appearance reference,
-# otherwise the model adds them to every picture (read-syllables got a crowd of pigs instead of straw for «соломы»).
+# The shared style of the pictures is "pictureStyle" in a lesson's game.json or a shared word folder's shared.json.
+# Write it so that the model draws only what the description says: characters of the story belong in the style only
+# as an appearance reference, otherwise the model adds them to every picture (read-syllables got a crowd of pigs
+# instead of straw for «соломы»).
 
 
 def setting(name: str) -> str:
@@ -60,17 +62,24 @@ def read_pictures(path: Path) -> list[dict]:
     return rows
 
 
-def find_lesson(name: str) -> Path:
-    """A lesson folder by name (read-potter) or by path (., ../read-potter)."""
+STYLE_FILES = ["game.json", "shared.json"]  # where pictureStyle lives: a lesson or a shared word folder
+
+
+def find_folder(name: str) -> Path:
+    """A folder with data/pictures.tsv by name (potter, read-syllables) or by path (., ../potter)."""
     for folder in [Path(name), LESSONS / name]:
-        if (folder / "game.json").exists():
+        if (folder / "data" / "pictures.tsv").exists():
             return folder.resolve()
-    sys.exit(f"Не найден урок {name}: нужна папка урока с game.json (например, read-potter)")
+    sys.exit(f"Не найдена папка {name} с data/pictures.tsv (например, potter или read-syllables)")
 
 
-def read_style(lesson: Path) -> str:
-    style = json.loads((lesson / "game.json").read_text(encoding="utf-8")).get("pictureStyle", "")
-    return style or sys.exit(f"В {lesson.name}/game.json нет pictureStyle — общего стиля картинок")
+def read_style(folder: Path) -> str:
+    for name in STYLE_FILES:
+        if (folder / name).exists():
+            style = json.loads((folder / name).read_text(encoding="utf-8")).get("pictureStyle", "")
+            if style:
+                return style
+    sys.exit(f"В {folder.name} нет pictureStyle — общего стиля картинок ({' или '.join(STYLE_FILES)})")
 
 
 def generate(what: str, style: str, api_key: str) -> bytes:
@@ -109,20 +118,20 @@ def save_small(png: bytes, out: Path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("lesson", help="урок: имя папки в lessons/ (read-potter) или путь к ней")
+    parser.add_argument("folder", help="папка с data/pictures.tsv: имя в lessons/ (potter, read-syllables) или путь")
     parser.add_argument("--limit", type=int, help="нарисовать только первые N")
     parser.add_argument("--force", action="store_true", help="перерисовать всё")
     parser.add_argument("--redo", type=lambda v: set(v.split(",")), default=set(),
                         help="перерисовать только эти слова, через запятую")
     args = parser.parse_args()
-    lesson = find_lesson(args.lesson)
-    style = read_style(lesson)
-    args.out = lesson / "images"
+    folder = find_folder(args.folder)
+    style = read_style(folder)
+    args.out = folder / "images"
 
     load_envs()
     api_key = os.environ.get("OPENAI_API_KEY") or sys.exit("Нет ключа: впишите OPENAI_API_KEY в .env")
 
-    rows = read_pictures(lesson / "data" / "pictures.tsv")
+    rows = read_pictures(folder / "data" / "pictures.tsv")
     if args.limit:
         rows = rows[:args.limit]
     args.out.mkdir(parents=True, exist_ok=True)

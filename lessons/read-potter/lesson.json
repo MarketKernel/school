@@ -4,7 +4,7 @@
   "subject": "Чтение",
   "icon": "🪄",
   "order": 11,
-  "uses": ["russian"],
+  "uses": ["russian", "potter"],
   "build": "(cd ../read-game/game && npm ci) && node ../read-game/game/build_scripts/build.mjs .",
   "publish": "build"
 }

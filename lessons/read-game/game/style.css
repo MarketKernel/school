@@ -49,9 +49,21 @@ button {
 }
 button:disabled { cursor: default; }
 
+/* ---------- Modes: each page shows only its own blocks ---------- */
+
+body[data-mode="assemble"] .only-aloud,
+body[data-mode="aloud"] .only-assemble { display: none !important; }
+
 /* ---------- Levels ---------- */
 
-header { padding: 14px 16px 0; }
+header {
+  padding: 14px 16px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 
 .levels {
   display: flex;
@@ -268,6 +280,69 @@ main {
 .card h2 { margin: 10px 0 6px; font-size: 30px; font-weight: 900; }
 .card p { margin: 0 0 22px; color: var(--muted); font-size: 18px; }
 
+/* ---------- Reading aloud ---------- */
+
+.score {
+  padding: 8px 16px;
+  background: #fff;
+  border-radius: 18px;
+  font-size: 22px;
+  font-weight: 900;
+  box-shadow: 0 4px 0 var(--accent-soft);
+}
+.score.bump { animation: pop 0.4s ease-out; }
+
+/* The speaker is only a hint here: the microphone is the main button */
+body[data-mode="aloud"] .speaker.big {
+  width: 64px;
+  height: 64px;
+  background: var(--main-soft);
+  color: var(--main-dark);
+  box-shadow: 0 4px 0 var(--tile-border);
+}
+
+/* The word is read, not assembled: each part is one plate «к · ры · са», so it isn't read letter by letter */
+body[data-mode="aloud"] .group {
+  gap: 0;
+  padding: 0 calc(var(--box) * 0.22);
+  background: #fff;
+  border: 3px solid var(--accent);
+  border-radius: calc(var(--box) * 0.2);
+  box-shadow: inset 0 -5px 0 rgba(61, 43, 47, 0.05);
+}
+body[data-mode="aloud"] .group:has(.ok) { border-color: var(--ok); background: var(--ok-bg); }
+body[data-mode="aloud"] .cell { width: auto; border: none; background: none; box-shadow: none; }
+
+.heard { margin: 0; min-height: 1.4em; font-size: 22px; color: var(--muted); text-align: center; }
+.heard.ok { color: var(--ok); }
+.heard.miss { color: var(--bad); }
+
+.mic {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 40px;
+  font-size: 30px;
+  font-weight: 900;
+  border: none;
+  border-radius: 999px;
+  background: var(--main);
+  color: #fff;
+  box-shadow: 0 5px 0 var(--main-dark);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.mic:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 2px 0 var(--main-dark); }
+.mic:disabled { opacity: 0.45; }
+.mic[hidden] { display: none; }
+.mic.active { animation: listening 1.2s ease-in-out infinite; }
+@keyframes listening {
+  0%, 100% { box-shadow: 0 5px 0 var(--main-dark), 0 0 0 0 var(--main-soft); }
+  50% { box-shadow: 0 5px 0 var(--main-dark), 0 0 0 14px var(--main-soft); }
+}
+
+.note { margin: 0; max-width: 520px; color: var(--muted); font-size: 16px; text-align: center; }
+.note[hidden] { display: none; }
+
 /* ---------- Confetti and grass ---------- */
 
 .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 20; }
@@ -322,6 +397,10 @@ main {
   .speaker.big { width: 64px; height: 64px; }
   .btn { font-size: 17px; padding: 10px 16px; }
   #message { font-size: 22px; }
+  .heard { font-size: 18px; }
+  .mic { font-size: 24px; padding: 12px 32px; }
+  .score { font-size: 18px; padding: 6px 12px; }
+  body[data-mode="aloud"] .speaker.big { width: 52px; height: 52px; }
   .tiles { gap: 9px; }
   .tile { border-radius: 16px; padding-right: 6px; }
   .tile-text { font-size: 34px; padding: 4px 2px 4px 12px; min-width: 52px; }

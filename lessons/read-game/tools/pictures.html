@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<!-- Serve lessons/ and open read-game/tools/pictures.html?lesson=<lesson folder>: all paths are relative to lessons/ -->
+<!-- Serve lessons/ and open read-game/tools/pictures.html?lesson=<folder with data/pictures.tsv>: paths are relative to lessons/ -->
 <base href="../../">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Картинки к словам</title>
@@ -22,7 +22,7 @@
 </style>
 </head>
 <body>
-<p class="hint">Урок: <b id="lesson"></b>. Клик по картинке — пометить как неудачную (красная). Внизу появится команда, чтобы перерисовать помеченные.
+<p class="hint">Папка: <b id="lesson"></b>. Клик по картинке — пометить как неудачную (красная). Внизу появится команда, чтобы перерисовать помеченные.
   Описание «что нарисовать» можно поправить в <span id="tsv"></span> перед перерисовкой.</p>
 <div id="levels"></div>
 <h2>Перерисовать помеченные</h2>
@@ -30,6 +30,8 @@
 
 <script>
 const lesson = new URLSearchParams(location.search).get("lesson") || "read-syllables";
+// Level names come from the lesson's game.json; a shared word folder has none
+const FALLBACK_LEVELS = [1, 2, 3].map(n => ({ icon: "📖", name: `Уровень ${n}` }));
 const bad = new Set();
 document.getElementById("lesson").textContent = lesson;
 document.getElementById("tsv").textContent = `lessons/${lesson}/data/pictures.tsv`;
@@ -45,7 +47,7 @@ function toggle(word, fig) {
   const [tsv, files, game] = await Promise.all([
     fetch(`${lesson}/data/pictures.tsv`).then(r => r.text()),
     fetch(`${lesson}/images.json`).then(r => (r.ok ? r.json() : {})),
-    fetch(`${lesson}/game.json`).then(r => r.json()),
+    fetch(`${lesson}/game.json`).then(r => (r.ok ? r.json() : { levels: FALLBACK_LEVELS })),
   ]);
   const rows = tsv.trim().split("\n").slice(1).map(l => l.split("\t"));
   for (const [i, { icon, name }] of game.levels.entries()) {

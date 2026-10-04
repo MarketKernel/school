@@ -1,5 +1,7 @@
-// «Собери слово» game: the word is split into syllables and the child assembles it from the tiles below.
+// «Собери слово» engine: what both game modes share — words, syllable split, sounds, levels, effects and the word cells.
 // One engine for several reading lessons: each lesson brings its words, pictures and story (game.json).
+// The page loads data.js, then this file, then one mode: assemble.js (tiles) or aloud.js (reading aloud).
+// These are classic scripts, not modules, so they share one global scope.
 
 /** A level's end dialog from game.json; «{n}» in text is the number of words collected. */
 interface Dialog {
@@ -10,9 +12,11 @@ interface Dialog {
 }
 
 // The build (build_scripts/build.mjs) puts words, sound lists and the lesson's story into data.js.
-// The sounds themselves stay in the shared folder (source): they are not copied into the lesson.
+// Sounds (and pictures of a shared word list) stay in shared folders: they are not copied into the lesson.
 declare const GAME_DATA: {
+  lesson: string; // lesson folder name — the key prefix for saved progress
   source: string; // shared folder with the sounds: lessons/russian
+  imageSource: string; // shared folder with the pictures, or "" when they are copied into the lesson
   words: string[]; // as written, names with a capital letter: «Гарри»
   syllables: Record<string, string>;
   letters: Record<string, string>;
@@ -31,7 +35,7 @@ const ALPHABET = "абвгдеёжзийклмнопрстуфхцчшщъыьэ
 const SOFTABLE = "бвгдзклмнпрстфх"; // consonants that have a soft pair
 const PAUSE_BETWEEN_PARTS = 250; // ms between syllables when speaking a word
 
-// ---------- Syllable split (same as tools/syllables.py) ----------
+// ---------- Syllable split (same as russian/tools/syllables.py) ----------
 
 const isVowel = (ch: string) => ch !== "" && VOWELS.includes(ch);
 const isSign = (ch: string) => ch !== "" && SIGNS.includes(ch);
@@ -56,6 +60,17 @@ function splitWord(word: string): string[] {
   return parts;
 }
 
+const lower = (w: string) => w.toLowerCase();
+const syllableCount = (w: string) => [...w].filter(isVowel).length;
+
+// ---------- Shared folders ----------
+
+/** On the site lessons and shared folders sit side by side (../russian/); a local build lives in lessons/<lesson>/build/. */
+function sharedBase(folder: string): string {
+  const local = /\/lessons\/[^/]+\/build\//.test(location.pathname);
+  return `${local ? "../../" : "../"}${folder}/`;
+}
+
 // ---------- Sound ----------
 
 let syllableFiles: Record<string, string> = {};
@@ -63,12 +78,7 @@ let letterFiles: Record<string, string> = {};
 let softFiles: Record<string, string> = {};
 let imageFiles: Record<string, string> = {};
 let audioBase = "";
-
-/** On the site lessons and shared folders sit side by side (../russian/); a local build lives in lessons/<lesson>/build/. */
-function findAudioBase(source: string): string {
-  const local = /\/lessons\/[^/]+\/build\//.test(location.pathname);
-  return `${local ? "../../" : "../"}${source}/audio/`;
-}
+let imageBase = "";
 
 /** Files for a word part: the whole syllable or soft consonant if recorded, otherwise each letter separately. */
 function urlsFor(part: string): string[] {
@@ -122,6 +132,12 @@ async function playParts(parts: string[]): Promise<void> {
   }
 }
 
+/** Stops whatever is playing (the microphone must not hear the speaker). */
+function stopSound() {
+  playToken++;
+  stopCurrent?.();
+}
+
 // ---------- Levels: names and dialogs come from the lesson (game.json) ----------
 
 // Difficulty is the number of tiles to assemble: «до-мик» is easier than «с-т-ра-ш-но», though both have two syllables
@@ -145,31 +161,23 @@ const PIPS = 5; // pips under each level button
 const WORDS_PER_PIP = 5; // words per pip — it glows brighter with each word
 const WORDS_PER_LEVEL = PIPS * WORDS_PER_PIP; // words needed to complete a level
 
-const syllableCount = (w: string) => [...w].filter(isVowel).length;
-
 // ---------- Game state ----------
 
-interface Tile {
-  id: number;
-  text: string;
-  used: boolean;
+/** What a game mode adds to the shared part. */
+interface Mode {
+  newRound(): void; // a new word has been picked: entry, word and parts are set
+  render(): void; // redraw the mode's own part of the page
+  busy(): boolean; // true while the level must not change (a check is in progress)
 }
+let mode: Mode;
 
 let wordsByLevel: string[][] = [];
 let level = 0;
-let progress: number[] = []; // words collected on each level
+let progress: number[] = []; // words done on each level
 let seen: Set<string>[] = []; // so words don't repeat until all have been used
 let entry = ""; // the word as written in the lesson: «Гарри»
 let word = ""; // the same in lower case — tiles and checks use it
 let parts: string[] = [];
-let tiles: Tile[] = [];
-let placed: Tile[] = [];
-let result: "ok" | "bad" | null = null;
-let busy = false; // a check is in progress — tiles are locked
-
-const placedText = () => placed.map((t) => t.text).join("");
-const isFull = () => placedText().length === word.length;
-const lower = (w: string) => w.toLowerCase();
 
 const random = <T>(list: T[]): T => list[Math.floor(Math.random() * list.length)]!;
 
@@ -180,23 +188,6 @@ function shuffle<T>(list: T[]): T[] {
     [a[i], a[j]] = [a[j]!, a[i]!];
   }
   return a;
-}
-
-/** Decoy tiles: one look-alike per correct tile (a syllable for a syllable, a letter for a letter). */
-function decoys(correct: string[]): string[] {
-  const taken = new Set(correct);
-  const syllablePool = Object.keys(syllableFiles);
-  const letterPool = [...ALPHABET].filter((c) => !isSign(c));
-  return correct.map((part) => {
-    let pool: string[];
-    if (isSyllable(part)) pool = syllablePool;
-    else if (part.length === 1) pool = letterPool;
-    else pool = [...SOFTABLE].map((c) => c + part.slice(1)); // «ть» → «нь», «сь»…
-    const options = pool.filter((x) => !taken.has(x));
-    const pick = options.length ? random(options) : random(pool);
-    taken.add(pick);
-    return pick;
-  });
 }
 
 /** Only words with pictures (if the level has any), in rotation: no repeats until all have been shown. */
@@ -218,62 +209,20 @@ function newRound() {
   entry = pickWord();
   word = lower(entry);
   parts = splitWord(word);
-  tiles = shuffle([...parts, ...decoys(parts)]).map((text, id) => ({ id, text, used: false }));
-  placed = [];
-  result = null;
+  mode.newRound();
   render();
 }
 
 function setLevel(index: number) {
-  if (busy) return;
+  if (mode.busy()) return;
   level = index;
   newRound();
 }
 
-function place(tile: Tile, el: HTMLElement) {
-  if (busy || result === "ok" || tile.used) return;
-  if (placedText().length + tile.text.length > word.length) {
-    shake(el); // doesn't fit into the remaining cells
-    return;
-  }
-  tile.used = true;
-  placed.push(tile);
-  result = null;
-  render();
-  playParts([tile.text]);
-}
-
-function erase() {
-  if (busy || result === "ok") return;
-  const tile = placed.pop();
-  if (!tile) return;
-  tile.used = false;
-  result = null;
-  render();
-}
-
-async function check() {
-  if (busy || !isFull() || result === "ok") return;
-  busy = true;
-  render();
-  await playParts(placed.map((t) => t.text));
-  result = placedText() === word ? "ok" : "bad";
-  busy = false;
-  if (result === "ok") {
-    progress[level] = Math.min(WORDS_PER_LEVEL, progress[level]! + 1);
-    chime(true);
-    confetti();
-  } else {
-    chime(false);
-    shake($("word"));
-  }
-  render();
-  if (result === "ok" && progress[level] === WORDS_PER_LEVEL) setTimeout(showLevelDone, 1200);
-}
-
-function next() {
-  if (busy) return;
-  newRound();
+/** One more word done on the current level; the dialog comes when the level is complete. */
+function addProgress() {
+  progress[level] = Math.min(WORDS_PER_LEVEL, progress[level]! + 1);
+  if (progress[level] === WORDS_PER_LEVEL) setTimeout(showLevelDone, 1200);
 }
 
 // ---------- Effects: right/wrong chime and confetti ----------
@@ -375,16 +324,19 @@ function renderPicture() {
   const img = $<HTMLImageElement>("picture");
   const file = imageFiles[entry];
   img.hidden = !file;
-  if (file && img.getAttribute("src") !== file) img.src = file;
+  if (file && img.getAttribute("src") !== imageBase + file) img.src = imageBase + file;
 }
 
-function renderWord() {
+/**
+ * The word cells, grouped by parts with dots between them. `letters` fills them from the start;
+ * `result` colours them: "ok" — a green wave, "bad" — wrong letters red.
+ */
+function renderWord(letters: string, result: "ok" | "bad" | null) {
   const box = $("word");
   box.replaceChildren();
   // Cell size adapts to the word length
   box.style.setProperty("--n", String(word.length + (parts.length - 1) * 0.5));
 
-  const letters = placedText();
   let index = 0;
   parts.forEach((part, pi) => {
     if (pi > 0) box.append(Object.assign(document.createElement("span"), { className: "dot" }));
@@ -405,67 +357,27 @@ function renderWord() {
   });
 }
 
-function renderTiles() {
-  const box = $("tiles");
-  box.replaceChildren();
-  for (const tile of tiles) {
-    const el = document.createElement("div");
-    el.className = "tile" + (tile.used ? " used" : "");
-
-    const text = document.createElement("button");
-    text.className = "tile-text";
-    text.textContent = tile.text;
-    text.disabled = tile.used || busy || result === "ok";
-    text.onclick = () => place(tile, el);
-
-    const speaker = document.createElement("button");
-    speaker.className = "speaker small";
-    speaker.title = "Послушать";
-    speaker.innerHTML = SPEAKER_SVG;
-    speaker.disabled = tile.used;
-    speaker.onclick = () => playParts([tile.text]);
-
-    el.append(text, speaker);
-    box.append(el);
-  }
-}
-
-function renderControls() {
-  ($("erase") as HTMLButtonElement).disabled = busy || !placed.length || result === "ok";
-  ($("check") as HTMLButtonElement).disabled = busy || !isFull() || result === "ok";
-  $("check").hidden = result === "ok";
-  $("next").classList.toggle("primary", result === "ok");
-  $("next").textContent = result === "ok" ? "Следующее слово →" : "Другое слово";
-
-  const message = $("message");
-  message.className = result ?? "";
-  message.textContent =
-    result === "ok" ? random(["Правильно! Молодец!", "Ура! Получилось!", "Отлично!", "Здорово!"]) :
-    result === "bad" ? "Не так. Сотри и попробуй ещё раз" :
-    busy ? "Слушаем…" :
-    "";
-}
-
 function render() {
   renderLevels();
   renderPicture();
-  renderWord();
-  renderTiles();
-  renderControls();
+  mode.render();
 }
 
 // ---------- Startup ----------
 
-function main() {
+/** Reads data.js and starts the game in the given mode. False if there is nothing to play. */
+function startGame(gameMode: Mode): boolean {
   if (typeof GAME_DATA === "undefined") {
     $("message").textContent = "Нет data.js — соберите игру: npm run build";
-    return;
+    return false;
   }
+  mode = gameMode;
   syllableFiles = GAME_DATA.syllables;
   letterFiles = GAME_DATA.letters;
   softFiles = GAME_DATA.soft ?? {};
   imageFiles = GAME_DATA.images ?? {};
-  audioBase = findAudioBase(GAME_DATA.source);
+  audioBase = sharedBase(GAME_DATA.source) + "audio/";
+  imageBase = GAME_DATA.imageSource ? sharedBase(GAME_DATA.imageSource) : "";
   const story = GAME_DATA.story;
   LEVELS = story.levels.map((lvl, i) => ({ ...lvl, ...DIFFICULTY[i]! }));
   doneIcon = story.doneIcon;
@@ -475,22 +387,6 @@ function main() {
   // Only Russian words with at least two syllables (two vowels); split into levels by tile count
   const words = GAME_DATA.words.filter((w) => /^[а-яё]+$/.test(lower(w)) && syllableCount(lower(w)) >= 2);
   wordsByLevel = LEVELS.map((lvl) => words.filter((w) => lvl.fits(splitWord(lower(w)).length)));
-
-  $("say-word").innerHTML = SPEAKER_SVG;
-  $("say-word").onclick = () => playParts(parts);
-  $("erase").onclick = erase;
-  $("check").onclick = check;
-  $("next").onclick = next;
-  document.addEventListener("keydown", (e) => {
-    if (!$("overlay").hidden) {
-      if (e.key === "Enter") $("overlay-btn").click();
-      return;
-    }
-    if (e.key === "Backspace") erase();
-    if (e.key === "Enter") (result === "ok" ? next : check)();
-  });
-
   newRound();
+  return true;
 }
-
-main();

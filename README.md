@@ -8,6 +8,7 @@
 |---|---|---|
 | 🐷 Собери слово — чтение по слогам | Чтение | [lessons/read-syllables](lessons/read-syllables) |
 | 🪄 Волшебные слова — чтение по слогам, слова из «Гарри Поттера» | Чтение | [lessons/read-potter](lessons/read-potter) |
+| 🎤 Прочитай вслух — слова из «Гарри Поттера» по слогам, браузер слушает и проверяет | Чтение | [lessons/read-potter-aloud](lessons/read-potter-aloud) |
 | ➕ Сложение — числа от 0 до 9 | Математика | [lessons/math-addition](lessons/math-addition) |
 | ➖ Вычитание — сложение наоборот | Математика | [lessons/math-subtraction](lessons/math-subtraction) |
 | ✖️ Умножение — таблица от 0 до 9 | Математика | [lessons/math-multiplication](lessons/math-multiplication) |
@@ -23,7 +24,7 @@
 | 🗣️ Скажи по-английски — 300 первых слов: послушай и повтори | Английский | [lessons/english-words](lessons/english-words) |
 | 👂 Найди картинку — услышь слово и выбери одну из четырёх картинок | Английский | [lessons/english-pictures](lessons/english-pictures) |
 
-Уроки чтения собираются из общего движка [lessons/read-game](lessons/read-game), а звуки букв и слогов берут из общей папки [lessons/russian](lessons/russian): новый урок чтения — это папка со словами, картинками и `game.json`, без своего кода.
+Уроки чтения собираются из общего движка [lessons/read-game](lessons/read-game) (два режима: собрать слово из карточек или прочитать вслух), а звуки букв и слогов берут из общей папки [lessons/russian](lessons/russian). Слова и картинки из «Гарри Поттера» — в общей папке [lessons/potter](lessons/potter), их используют два урока. Новый урок чтения — это папка с `game.json` (и своими словами или ссылкой на общие), без своего кода.
 
 Тренажёры на счёт и на дроби собираются из общего движка [lessons/math-drill](lessons/math-drill): новый тренажёр — это папка с `lesson.json` и `drill.json`, без своего кода.
 
@@ -40,7 +41,7 @@ lessons/
     tools/           — утилиты, которые готовят материалы: озвучка, картинки, страницы проверки
     data/            — исходные тексты и списки
     audio/, images/  — готовые звуки и картинки
-  <общая-папка>/     — материалы нескольких уроков, с shared.json вместо lesson.json (например, english/, russian/)
+  <общая-папка>/     — материалы нескольких уроков, с shared.json вместо lesson.json (например, english/, russian/, potter/)
 site/
   index.html         — шаблон главной страницы
   manifest.webmanifest, sw.js, icon*.png — всё для приложения (PWA), см. ниже
@@ -117,7 +118,7 @@ node build_scripts/build.mjs --no-build   # пересобрать главну�
 - Урок пишет в своём `lesson.json` `"uses": ["<папка>"]` и загружает файлы по относительному пути: `../<папка>/…` на сайте, а из локальной сборки — до `lessons/`: `../../../<папка>/…` из `lessons/<урок>/game/build/`, `../../<папка>/…` из `lessons/<урок>/build/`.
 - Service worker сохраняет общую папку вместе с каждым уроком, который её указал, поэтому урок работает без интернета.
 
-Примеры — [lessons/english](lessons/english): её используют «Скажи по-английски» и «Найди картинку»; [lessons/russian](lessons/russian) — звуки букв и слогов для «Собери слово» и «Волшебных слов».
+Примеры — [lessons/english](lessons/english): её используют «Скажи по-английски» и «Найди картинку»; [lessons/russian](lessons/russian) — звуки букв и слогов для всех уроков чтения; [lessons/potter](lessons/potter) — слова и картинки для «Волшебных слов» и «Прочитай вслух».
 
 ## Приложение (PWA)
 

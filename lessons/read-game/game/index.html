@@ -13,9 +13,11 @@
 <!-- The lesson's colours and decorations (theme.css in the lesson folder), on top of the engine style -->
 <link rel="stylesheet" href="theme.css">
 </head>
-<body>
+<!-- data-mode is filled from game.json: "assemble" (tiles) or "aloud" (reading aloud); each mode hides the other's blocks -->
+<body data-mode="__MODE__">
 <header>
   <nav id="levels" class="levels" aria-label="Уровни"></nav>
+  <div id="score" class="score only-aloud" title="Очки: сколько слов прочитано без подсказки" aria-live="polite"></div>
 </header>
 
 <main>
@@ -25,17 +27,24 @@
       <div id="word" class="word" aria-label="Слово"></div>
       <button id="say-word" class="speaker big" title="Послушать слово по слогам" aria-label="Послушать слово"></button>
     </div>
+    <p id="heard" class="heard only-aloud" aria-live="polite"></p>
   </section>
+
+  <button id="speak" class="mic only-aloud" title="Прочитать слово вслух (Enter)">
+    <span aria-hidden="true">🎤</span><span id="speak-label">Читать</span>
+  </button>
 
   <p id="message" role="status"></p>
 
   <section class="controls">
-    <button id="erase" class="btn" title="Стереть последний слог (Backspace)">⌫ Стереть</button>
-    <button id="check" class="btn primary" title="Проверить (Enter)">Проверить</button>
+    <button id="erase" class="btn only-assemble" title="Стереть последний слог (Backspace)">⌫ Стереть</button>
+    <button id="check" class="btn primary only-assemble" title="Проверить (Enter)">Проверить</button>
+    <button id="manual-ok" class="btn only-aloud" hidden>👍 Получилось</button>
     <button id="next" class="btn">Другое слово</button>
   </section>
 
-  <section id="tiles" class="tiles" aria-label="Слоги и буквы"></section>
+  <section id="tiles" class="tiles only-assemble" aria-label="Слоги и буквы"></section>
+  <p id="note" class="note only-aloud" hidden></p>
 </main>
 
 <div id="overlay" class="overlay" hidden>
@@ -52,6 +61,7 @@
 
 <!-- Classic scripts, not modules: this way the game also opens by double-click, without a server -->
 <script src="data.js"></script>
-<script src="main.js"></script>
+<script src="common.js"></script>
+<script src="__MODE__.js"></script>
 </body>
 </html>

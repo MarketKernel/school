@@ -2,7 +2,8 @@
 
 Reading lessons are the ones whose lesson.json lists "uses": ["russian"]. Their words are data/words.txt
 ("count<TAB>word" or one word per line) or, without it, the words of data/pictures.tsv — the same rule as
-the engine build (lessons/read-game/game/build_scripts/build.mjs).
+the engine build (lessons/read-game/game/build_scripts/build.mjs). A lesson whose game.json names a shared
+word folder ("words": "potter") takes them from that folder; a folder shared by several lessons counts once.
 
 A syllable is a consonant + vowel pair (ма, ви, де…). Other letters
 (single vowels, consonants without a following vowel) are shown separately
@@ -10,7 +11,7 @@ in the split but are not counted as syllables:
     увидев -> у-ви-де-в   (syllables: ви, де)
 
 Output:
-    <lesson>/data/words_split.txt   — every lesson's words split into parts
+    <words folder>/data/words_split.txt — the words of every lesson or shared word folder split into parts
     russian/data/syllables.txt      — syllables of all lessons by frequency; tools/speak.py voices them
 
 Usage:
@@ -65,15 +66,27 @@ def reading_lessons() -> list[Path]:
     return found
 
 
-def read_words(lesson: Path) -> list[str]:
-    """A lesson's words in lower case: data/words.txt or, without it, the words of data/pictures.tsv."""
-    words_file, pictures = lesson / "data" / "words.txt", lesson / "data" / "pictures.tsv"
+def word_folders() -> list[Path]:
+    """Folders with the words of the reading lessons: the lesson itself or the shared folder from its game.json."""
+    found = []
+    for lesson in reading_lessons():
+        game = lesson / "game.json"
+        shared = json.loads(game.read_text(encoding="utf-8")).get("words") if game.exists() else None
+        folder = LESSONS / shared if shared else lesson
+        if folder not in found:
+            found.append(folder)
+    return found
+
+
+def read_words(folder: Path) -> list[str]:
+    """Words in lower case: data/words.txt or, without it, the words of data/pictures.tsv."""
+    words_file, pictures = folder / "data" / "words.txt", folder / "data" / "pictures.tsv"
     if words_file.exists():
         cells = [line.split("\t")[-1] for line in words_file.read_text(encoding="utf-8").splitlines()]
     elif pictures.exists():
         cells = [(line.split("\t") + ["", ""])[1] for line in pictures.read_text(encoding="utf-8").splitlines()[1:]]
     else:
-        raise SystemExit(f"{lesson.name}: нет ни data/words.txt, ни data/pictures.tsv")
+        raise SystemExit(f"{folder.name}: нет ни data/words.txt, ни data/pictures.tsv")
     return list(dict.fromkeys(c.strip().lower() for c in cells if c.strip()))
 
 
@@ -82,17 +95,17 @@ def main():
     parser.parse_args()
 
     counts = Counter()
-    for lesson in reading_lessons():
-        words = read_words(lesson)
+    for folder in word_folders():
+        words = read_words(folder)
         split_lines = []
-        lesson_syllables = set()
+        folder_syllables = set()
         for word in words:
             parts = split_word(word)
             split_lines.append(f"{word}\t{'-'.join(parts)}")
             counts.update(p for p in parts if is_syllable(p))
-            lesson_syllables.update(p for p in parts if is_syllable(p))
-        (lesson / "data" / "words_split.txt").write_text("\n".join(split_lines) + "\n", encoding="utf-8")
-        print(f"{lesson.name}: слов {len(words)}, слогов {len(lesson_syllables)} → {lesson.name}/data/words_split.txt")
+            folder_syllables.update(p for p in parts if is_syllable(p))
+        (folder / "data" / "words_split.txt").write_text("\n".join(split_lines) + "\n", encoding="utf-8")
+        print(f"{folder.name}: слов {len(words)}, слогов {len(folder_syllables)} → {folder.name}/data/words_split.txt")
 
     # Most frequent syllables first, ties broken alphabetically
     ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
