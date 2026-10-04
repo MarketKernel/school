@@ -1,0 +1,10 @@
+{
+  "title": "Скажи по-английски",
+  "description": "Первые 300 английских слов: слушаем, как звучит слово, повторяем вслух — и получаем звёздочку.",
+  "subject": "Английский",
+  "icon": "🗣️",
+  "order": 200,
+  "uses": ["english"],
+  "build": "cd game && npm ci && npm run build",
+  "publish": "game/build"
+}

@@ -1,0 +1,301 @@
+тема	слово	перевод	что нарисовать	тоже засчитать
+animals	cat	кошка	рыжая кошка сидит
+animals	dog	собака	весёлая собака виляет хвостом
+animals	cow	корова	пятнистая корова на лугу
+animals	pig	свинья	розовая свинка
+animals	horse	лошадь	коричневая лошадь
+animals	sheep	овца	пушистая белая овечка
+animals	goat	коза	коза с маленькими рожками
+animals	duck	утка	жёлтая уточка
+animals	chicken	курица	курица-несушка
+animals	rabbit	кролик	серый кролик с длинными ушами
+animals	mouse	мышь	маленький серый мышонок
+animals	bird	птица	маленькая синяя птичка на ветке
+animals	fish	рыба	оранжевая рыбка
+animals	frog	лягушка	зелёная лягушка
+animals	bear	медведь	бурый медведь	bare
+animals	lion	лев	лев с пышной гривой
+animals	tiger	тигр	полосатый тигр
+animals	elephant	слон	серый слон с хоботом
+animals	monkey	обезьяна	обезьянка с бананом
+animals	giraffe	жираф	жираф с длинной шеей
+animals	zebra	зебра	полосатая зебра
+animals	snake	змея	зелёная змейка
+animals	fox	лиса	рыжая лиса с пушистым хвостом
+animals	wolf	волк	серый волк, добрый и не страшный
+animals	owl	сова	сова на ветке
+animals	turtle	черепаха	черепаха с зелёным панцирем
+animals	bee	пчела	пчёлка в чёрно-жёлтую полоску	be
+animals	butterfly	бабочка	яркая бабочка
+animals	spider	паук	маленький добрый паучок
+animals	ant	муравей	муравей	aunt
+animals	whale	кит	синий кит	wail
+animals	dolphin	дельфин	дельфин выпрыгивает из воды
+animals	penguin	пингвин	пингвин
+animals	crocodile	крокодил	зелёный крокодил с улыбкой
+animals	hippo	бегемот	бегемот	hippopotamus
+animals	kangaroo	кенгуру	кенгуру с кенгурёнком в сумке
+food	apple	яблоко	красное яблоко
+food	banana	банан	жёлтый банан
+food	pear	груша	зелёная груша	pair
+food	lemon	лимон	жёлтый лимон
+food	grapes	виноград	гроздь зелёного винограда	grape
+food	strawberry	клубника	спелая клубничка
+food	cherry	вишня	две красные вишенки на веточке
+food	watermelon	арбуз	долька арбуза
+food	carrot	морковь	оранжевая морковка с ботвой
+food	potato	картошка	картофелина
+food	tomato	помидор	красный помидор
+food	cucumber	огурец	зелёный огурец
+food	onion	лук	луковица
+food	bread	хлеб	буханка хлеба
+food	butter	масло	кусочек сливочного масла на блюдце
+food	cheese	сыр	кусок сыра с дырками
+food	egg	яйцо	куриное яйцо
+food	milk	молоко	стакан молока
+food	juice	сок	стакан апельсинового сока
+food	water	вода	стакан чистой воды
+food	tea	чай	чашка чая	tee
+food	soup	суп	тарелка супа
+food	meat	мясо	кусок мяса на косточке	meet
+food	rice	рис	миска риса
+food	cake	торт	праздничный торт со свечками
+food	cookie	печенье	круглое печенье с шоколадной крошкой	cookies
+food	candy	конфета	конфета в яркой обёртке
+food	ice cream	мороженое	мороженое в вафельном рожке	icecream
+food	chocolate	шоколад	плитка шоколада
+food	pizza	пицца	пицца
+food	sandwich	бутерброд	бутерброд с сыром и салатом
+food	honey	мёд	бочонок мёда
+colors	red	красный	большая красная клякса краски	read
+colors	blue	синий	большая синяя клякса краски	blew
+colors	green	зелёный	большая зелёная клякса краски
+colors	yellow	жёлтый	большая жёлтая клякса краски
+colors	orange	оранжевый	большая оранжевая клякса краски
+colors	pink	розовый	большая розовая клякса краски
+colors	purple	фиолетовый	большая фиолетовая клякса краски
+colors	brown	коричневый	большая коричневая клякса краски
+colors	black	чёрный	большая чёрная клякса краски
+colors	white	белый	большая белая клякса краски с серым контуром на светло-голубом фоне
+colors	gray	серый	большая серая клякса краски	grey
+colors	circle	круг	красный круг
+colors	square	квадрат	синий квадрат
+colors	triangle	треугольник	зелёный треугольник
+colors	star	звезда	жёлтая звёздочка
+colors	heart	сердце	красное сердечко
+numbers	one	один	крупная цифра 1, рядом ровно одно яблоко	won
+numbers	two	два	крупная цифра 2, рядом ровно два мячика	to, too
+numbers	three	три	крупная цифра 3, рядом ровно три утёнка	tree
+numbers	four	четыре	крупная цифра 4, рядом ровно четыре звёздочки	for
+numbers	five	пять	крупная цифра 5, рядом ровно пять клубничек
+numbers	six	шесть	крупная цифра 6 слева, справа ровно шесть божьих коровок: два ряда по три, все целиком помещаются в кадр
+numbers	seven	семь	крупная цифра 7, рядом ровно семь цветочков
+numbers	eight	восемь	крупная весёлая цифра 8, раскрашенная в разноцветный горошек	ate
+numbers	nine	девять	крупная весёлая цифра 9, раскрашенная в полоску
+numbers	ten	десять	крупное весёлое число 10, раскрашенное звёздочками
+numbers	eleven	одиннадцать	крупное число 11
+numbers	twelve	двенадцать	крупное число 12
+people	mom	мама	улыбающаяся мама	mum, mommy, mummy, mama, mam
+people	dad	папа	улыбающийся папа	daddy
+people	baby	малыш	малыш в подгузнике
+people	boy	мальчик	мальчик
+people	girl	девочка	девочка
+people	brother	брат	два брата-мальчика держатся за руки
+people	sister	сестра	две сестрички-девочки держатся за руки
+people	grandma	бабушка	добрая бабушка в очках	granny, grandmother
+people	grandpa	дедушка	добрый дедушка с усами	grandfather
+people	family	семья	семья: мама, папа и двое детей
+people	friend	друг	два друга обнимаются	friends
+people	man	мужчина	мужчина
+people	woman	женщина	женщина
+people	teacher	учитель	учительница у доски без надписей
+people	doctor	врач	врач в белом халате со стетоскопом
+people	princess	принцесса	принцесса в короне
+body	head	голова	голова мальчика
+body	face	лицо	улыбающееся лицо девочки
+body	eye	глаз	один большой голубой глаз	i, eyes, aye
+body	ear	ухо	ухо	ears
+body	nose	нос	нос	knows
+body	mouth	рот	улыбающийся рот
+body	teeth	зубы	ровные белые зубы в улыбке
+body	tongue	язык	ребёнок показывает язык
+body	hair	волосы	кудрявые волосы	hare
+body	neck	шея	шея в шарфике
+body	shoulder	плечо	мальчик в футболке, его плечо обведено ярким жёлтым кругом	shoulders
+body	arm	рука	детская рука от плеча до кисти	arms
+body	hand	ладонь	открытая детская ладошка	hands
+body	finger	палец	палец, указывающий вверх	fingers
+body	tummy	живот	круглый животик малыша
+body	leg	нога	одна детская нога целиком, от шортиков до кроссовка, вид сбоку	legs
+body	knee	колено	колено с пластырем	knees
+body	foot	ступня	мультяшная ступня с пятью пальчиками, вид снизу, как наклейка	feet
+body	toe	палец ноги	пальчики на ноге	toes, tow
+body	elbow	локоть	мальчик согнул руку, его локоть обведён ярким жёлтым кругом
+home	house	дом	уютный домик
+home	door	дверь	деревянная дверь
+home	window	окно	окно с занавесками
+home	roof	крыша	красная черепичная крыша
+home	room	комната	уютная детская комната
+home	kitchen	кухня	кухня с плитой
+home	bed	кровать	кровать с одеялом
+home	pillow	подушка	мягкая подушка
+home	table	стол	деревянный стол
+home	chair	стул	деревянный стул
+home	sofa	диван	мягкий диван	couch
+home	lamp	лампа	настольная лампа
+home	clock	часы	настенные часы со стрелками без цифр
+home	mirror	зеркало	круглое зеркало
+home	phone	телефон	телефон	telephone
+home	bath	ванна	ванна с пеной	bathtub
+home	soap	мыло	кусок мыла с пузырьками
+home	towel	полотенце	махровое полотенце
+home	toothbrush	зубная щётка	зубная щётка с пастой
+home	cup	чашка	чашка
+home	plate	тарелка	пустая тарелка
+home	spoon	ложка	ложка
+home	fork	вилка	вилка
+home	knife	нож	столовый нож
+home	bowl	миска	пустая миска
+home	key	ключ	золотой ключик
+toys	ball	мяч	разноцветный мяч
+toys	doll	кукла	кукла в платье
+toys	teddy bear	плюшевый мишка	плюшевый мишка	teddy
+toys	kite	воздушный змей	воздушный змей в небе
+toys	balloon	воздушный шарик	красный воздушный шарик	balloons
+toys	robot	робот	игрушечный робот
+toys	blocks	кубики	башня из кубиков без букв	block
+toys	puzzle	пазл	детали пазла
+toys	drum	барабан	игрушечный барабан с палочками
+toys	guitar	гитара	гитара
+toys	piano	пианино	пианино
+toys	book	книга	открытая книжка с картинками
+toys	pen	ручка	шариковая ручка
+toys	pencil	карандаш	цветной карандаш
+toys	crayon	мелок	восковые мелки	crayons
+toys	notebook	тетрадь	тетрадь
+toys	paper	бумага	стопка белой бумаги
+toys	scissors	ножницы	детские ножницы
+toys	glue	клей	тюбик клея
+toys	bag	сумка	школьный рюкзак
+toys	desk	парта	школьная парта со стулом
+toys	school	школа	здание школы
+toys	computer	компьютер	компьютер
+toys	gift	подарок	подарок с бантом
+clothes	shirt	рубашка	рубашка с пуговицами
+clothes	T-shirt	футболка	футболка без надписей	tshirt, tee shirt
+clothes	dress	платье	платье
+clothes	skirt	юбка	юбка
+clothes	pants	брюки	брюки	trousers
+clothes	shorts	шорты	шорты
+clothes	sweater	свитер	тёплый свитер
+clothes	jacket	куртка	куртка
+clothes	coat	пальто	пальто
+clothes	hat	шляпа	шляпа
+clothes	cap	кепка	кепка
+clothes	scarf	шарф	полосатый шарф
+clothes	gloves	перчатки	пара перчаток	glove
+clothes	socks	носки	пара носков	sock
+clothes	shoes	туфли	пара туфелек	shoe
+clothes	boots	сапоги	пара резиновых сапог	boot
+clothes	pajamas	пижама	пижама со звёздочками	pyjamas
+clothes	glasses	очки	очки
+nature	sun	солнце	улыбающееся солнышко	son
+nature	moon	луна	полумесяц
+nature	sky	небо	голубое небо с облаками
+nature	cloud	облако	пушистое облако
+nature	rain	дождь	тучка и капли дождя	reign, rein
+nature	snow	снег	падающие снежинки
+nature	wind	ветер	ветер раскачивает дерево
+nature	rainbow	радуга	радуга
+nature	tree	дерево	зелёное дерево
+nature	flower	цветок	цветок	flour
+nature	grass	трава	зелёная трава
+nature	leaf	лист	зелёный листок
+nature	mushroom	гриб	гриб
+nature	sea	море	море с волнами	see
+nature	river	река	речка
+nature	lake	озеро	озеро
+nature	mountain	гора	гора со снежной вершиной
+nature	forest	лес	лес
+nature	sand	песок	куча песка с ведёрком
+nature	stone	камень	камень
+nature	fire	огонь	костёр
+nature	ice	лёд	кубики льда
+nature	snowman	снеговик	снеговик с морковкой
+nature	garden	сад	сад с цветами
+nature	nest	гнездо	гнездо с яйцами
+nature	shell	ракушка	морская ракушка
+transport	car	машина	красная машинка
+transport	bus	автобус	жёлтый автобус
+transport	train	поезд	поезд
+transport	plane	самолёт	самолёт	plain, airplane
+transport	boat	лодка	лодка
+transport	ship	корабль	корабль
+transport	bike	велосипед	велосипед	bicycle
+transport	truck	грузовик	грузовик
+transport	taxi	такси	жёлтое такси без надписей
+transport	tractor	трактор	трактор
+transport	helicopter	вертолёт	вертолёт
+transport	rocket	ракета	ракета
+transport	motorbike	мотоцикл	мотоцикл	motorcycle
+transport	scooter	самокат	самокат
+transport	ambulance	скорая помощь	машина скорой помощи без надписей
+transport	submarine	подводная лодка	жёлтая подводная лодка
+actions	run	бежать	мальчик бежит
+actions	jump	прыгать	девочка прыгает
+actions	walk	идти	мальчик идёт
+actions	swim	плавать	ребёнок плавает в воде
+actions	fly	летать	птичка летит
+actions	climb	лезть	ребёнок лезет на дерево
+actions	dance	танцевать	девочка танцует
+actions	sing	петь	ребёнок поёт
+actions	eat	есть	ребёнок ест ложкой
+actions	drink	пить	ребёнок пьёт из стакана
+actions	sleep	спать	ребёнок спит в кровати
+actions	cry	плакать	малыш плачет
+actions	laugh	смеяться	ребёнок громко смеётся
+actions	smile	улыбаться	ребёнок улыбается
+actions	read	читать	ребёнок читает книжку	reed
+actions	write	писать	ребёнок пишет ручкой в тетради	right
+actions	draw	рисовать	ребёнок рисует карандашом
+actions	play	играть	дети играют в мяч
+actions	sit	сидеть	ребёнок сидит на стуле
+actions	stand	стоять	ребёнок стоит
+actions	cook	готовить	ребёнок в фартуке готовит
+actions	wash	мыть	ребёнок моет руки
+actions	clap	хлопать	ребёнок хлопает в ладоши
+actions	kick	пинать	мальчик бьёт ногой по мячу
+actions	throw	бросать	девочка бросает мяч
+actions	catch	ловить	мальчик ловит мяч
+actions	hug	обнимать	двое детей обнимаются
+actions	ride	кататься	ребёнок катается на велосипеде
+actions	listen	слушать	ребёнок слушает, приложив ладонь к уху
+actions	look	смотреть	ребёнок смотрит в бинокль
+actions	wave	махать	ребёнок машет рукой
+describe	big	большой	огромный мяч, рядом маленький ребёнок смотрит на него снизу вверх
+describe	small	маленький	малюсенький котёнок помещается в чайной чашке
+describe	long	длинный	очень длинный полосатый шарф
+describe	short	короткий	короткий огрызок карандаша
+describe	tall	высокий	очень высокая башня из кубиков без букв, рядом маленький ребёнок смотрит вверх
+describe	hot	горячий	горячий чайник с паром
+describe	cold	холодный	замёрзший мальчик в шарфе
+describe	happy	весёлый	крупно радостное лицо ребёнка с широкой улыбкой
+describe	sad	грустный	крупно грустное лицо ребёнка со слезинкой
+describe	angry	сердитый	крупно сердитое лицо ребёнка с нахмуренными бровями
+describe	tired	уставший	уставший ребёнок сидит без сил, опустив плечи
+describe	hungry	голодный	голодный ребёнок держится за животик
+describe	scared	испуганный	испуганный котёнок
+describe	fast	быстрый	быстрый гепард в беге
+describe	slow	медленный	медленная улитка
+describe	old	старый	старый потёртый башмак
+describe	new	новый	новенький блестящий башмак	knew
+describe	clean	чистый	чистый белый щенок после купания, вокруг блёстки
+describe	dirty	грязный	грязный поросёнок в луже
+describe	wet	мокрый	мокрая собака после дождя
+describe	dry	сухой	сухое бельё на верёвке под ярким солнцем
+describe	full	полный	доверху полная корзина яблок
+describe	empty	пустой	пустая корзина
+describe	heavy	тяжёлый	тяжёлая гиря
+describe	soft	мягкий	ребёнок гладит пушистого котёнка
+describe	open	открытый	открытая дверь
+describe	sleepy	сонный	сонный ребёнок зевает

@@ -10,6 +10,13 @@
 //   build       — build command, run inside the lesson folder; optional
 //   publish     — which lesson folder to publish (after the build); defaults to the lesson folder itself
 //   hidden      — true to keep the lesson off the home page (draft)
+//   uses        — shared folders the lesson loads files from, e.g. ["english"]; optional (see below)
+//
+// A shared folder is lessons/<folder>/ with a shared.json file instead of lesson.json: materials that
+// several lessons use (sounds, pictures), published once as _site/<folder>/ and never shown on the home page:
+//   title   — what it is (for the build log)
+//   publish — subfolders to publish, e.g. ["audio", "images"]; defaults to the whole folder
+// The service worker saves a shared folder together with every lesson that lists it in "uses".
 //
 // The site is also an installable app (PWA): every page gets the manifest, the icons and the
 // service worker (site/sw.js) linked in, so a lesson needs nothing of its own for that.
@@ -105,8 +112,30 @@ const lessons = readdirSync(lessonsDir, { withFileTypes: true })
   .map((d) => ({ slug: d.name, ...JSON.parse(readFileSync(join(lessonsDir, d.name, "lesson.json"), "utf8")) }))
   .sort((a, b) => (a.order ?? 1000) - (b.order ?? 1000) || a.title.localeCompare(b.title, "ru"));
 
+// Shared folders: materials used by several lessons (see the top of the file)
+const shared = readdirSync(lessonsDir, { withFileTypes: true })
+  .filter((d) => d.isDirectory() && existsSync(join(lessonsDir, d.name, "shared.json")))
+  .map((d) => ({ slug: d.name, ...JSON.parse(readFileSync(join(lessonsDir, d.name, "shared.json"), "utf8")) }));
+for (const lesson of lessons) {
+  for (const name of lesson.uses ?? []) {
+    if (!shared.some((s) => s.slug === name)) throw new Error(`${lesson.slug}: в "uses" указана папка ${name}, но нет lessons/${name}/shared.json`);
+  }
+}
+
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out);
+
+for (const folder of shared) {
+  console.log(`\n== ${folder.slug}: ${folder.title} (общие материалы)`);
+  for (const part of folder.publish ?? ["."]) {
+    const src = join(lessonsDir, folder.slug, part);
+    if (!existsSync(src)) throw new Error(`Нет ${src} — его публикует lessons/${folder.slug}/shared.json`);
+    cpSync(src, join(out, folder.slug, part), {
+      recursive: true,
+      filter: (path) => !/(^|\/)(\.DS_Store|\.env|node_modules)$/.test(path),
+    });
+  }
+}
 
 for (const lesson of lessons) {
   const dir = join(lessonsDir, lesson.slug);
@@ -161,8 +190,13 @@ const files = Object.fromEntries(
 );
 const worker = readFileSync(join(root, "site", "sw.js"), "utf8");
 if (!worker.includes("/* FILES */ {}")) throw new Error("В site/sw.js нет метки /* FILES */ {}");
-writeFileSync(join(out, "sw.js"), worker.replace("/* FILES */ {}", () => JSON.stringify(files)));
+if (!worker.includes("/* USES */ {}")) throw new Error("В site/sw.js нет метки /* USES */ {}");
+const uses = Object.fromEntries(lessons.filter((l) => l.uses?.length).map((l) => [l.slug, l.uses]));
+writeFileSync(join(out, "sw.js"), worker
+  .replace("/* FILES */ {}", () => JSON.stringify(files))
+  .replace("/* USES */ {}", () => JSON.stringify(uses)));
 
 console.log(`\nГотово: ${out}`);
 console.log(`Уроков: ${lessons.length}, на главной: ${[...subjects.values()].flat().length}, разделов: ${subjects.size}, ` +
+  `общих папок: ${shared.length}, ` +
   `файлов для офлайна: ${Object.keys(files).length}`);

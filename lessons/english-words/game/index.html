@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Скажи по-английски</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗣️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <nav id="topics" class="topics" aria-label="Темы"></nav>
+  <div id="score" class="score" title="Очки: сколько раз удалось сказать слово" aria-live="polite"></div>
+</header>
+
+<main>
+  <section class="board">
+    <div class="picture-box">
+      <img id="picture" class="picture" alt="">
+      <div id="picture-stub" class="picture-stub" aria-hidden="true"></div>
+    </div>
+    <div id="word" class="word" lang="en"></div>
+    <div id="translation" class="translation"></div>
+  </section>
+
+  <section class="actions">
+    <button id="listen" class="round listen" title="Послушать слово (пробел)">
+      <span class="round-icon" aria-hidden="true">🔊</span><span class="round-label">Послушай</span>
+    </button>
+    <button id="speak" class="round speak" title="Сказать слово (Enter)">
+      <span class="round-icon" aria-hidden="true">🎤</span><span class="round-label">Скажи</span>
+    </button>
+  </section>
+
+  <p id="message" role="status"></p>
+
+  <section class="controls">
+    <button id="manual-ok" class="btn" hidden>👍 Получилось</button>
+    <button id="next" class="btn">Другое слово</button>
+  </section>
+
+  <p id="note" class="note" hidden></p>
+</main>
+
+<div id="overlay" class="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
+    <div id="overlay-icon" class="card-icon"></div>
+    <h2 id="overlay-title"></h2>
+    <p id="overlay-text"></p>
+    <button id="overlay-btn" class="btn primary">Дальше →</button>
+  </div>
+</div>
+
+<div id="confetti" class="confetti" aria-hidden="true"></div>
+
+<!-- Classic scripts, not modules: this way the game also opens by double-click, without a server -->
+<script src="data.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

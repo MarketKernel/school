@@ -1,0 +1,12 @@
+{
+  "name": "english-words-game",
+  "private": true,
+  "scripts": {
+    "build": "node build_scripts/build.mjs",
+    "start": "npm run build && open build/index.html",
+    "serve": "npm run build && echo \"Откройте http://localhost:8000/english-words/game/build/\" && cd ../.. && python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}

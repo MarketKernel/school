@@ -1,0 +1,10 @@
+{
+  "title": "Найди картинку",
+  "description": "Слушаем английское слово и находим его среди четырёх картинок.",
+  "subject": "Английский",
+  "icon": "👂",
+  "order": 210,
+  "uses": ["english"],
+  "build": "cd game && npm ci && npm run build",
+  "publish": "game/build"
+}

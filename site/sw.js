@@ -3,7 +3,8 @@
 // published file and a hash of its contents.
 //
 // - The home page and the other root files are cached on install.
-// - A lesson is cached as a whole the first time its page is opened, so afterwards it plays offline.
+// - A lesson is cached as a whole the first time its page is opened, so afterwards it plays offline,
+//   together with the shared folders it lists in lesson.json "uses" (sounds and pictures of several lessons).
 // - Files are served from the cache first. A cache entry is keyed by the file's hash, so after
 //   a deploy only changed files are downloaded again and stale ones are dropped.
 // - Google Fonts are cached too, so Nunito survives offline.
@@ -12,6 +13,7 @@
 // worker, which meanwhile installs the new one.
 
 const FILES = /* FILES */ {};
+const USES = /* USES */ {}; // lesson -> shared folders it loads files from
 const CACHE = "school";
 const FONTS = "school-fonts";
 const ROOT = new URL("./", self.location.href);
@@ -31,7 +33,8 @@ function sitePath(url) {
 const known = (path) => path !== null && Object.hasOwn(FILES, path);
 const cacheKey = (path) => `${new URL(path, ROOT).href}?v=${FILES[path]}`;
 const lessonOf = (path) => (path.includes("/") ? path.slice(0, path.indexOf("/")) : null);
-const lessonFiles = (lesson) => Object.keys(FILES).filter((path) => path.startsWith(lesson + "/"));
+const lessonFiles = (lesson) =>
+  [lesson, ...(USES[lesson] ?? [])].flatMap((dir) => Object.keys(FILES).filter((path) => path.startsWith(dir + "/")));
 
 // Downloads the files that are not in the cache yet (in their current version)
 async function precache(paths) {
