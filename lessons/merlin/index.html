@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мерлин читает</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧙</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<style>
+  /* «Мерлин читает»: a helper page — the browser reads any text aloud (speechSynthesis) and writes down speech
+     (SpeechRecognition). Colours of the home page and the reading lessons. */
+  :root {
+    --ink: #3d2b2f;
+    --muted: #8b7576;
+    --sky: #dfe6ff;
+    --cream: #fff8ec;
+    --border: #eadfcd;
+    --main: #5b6fd8;         /* Merlin's robe blue */
+    --main-dark: #4153b5;
+    --main-soft: #e6eaff;
+    --now: #ffe08a;          /* the word being read */
+    --rec: #e5484d;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: linear-gradient(180deg, var(--sky) 0%, var(--cream) 55%) fixed;
+    color: var(--ink);
+    font-family: "Nunito", ui-rounded, system-ui, sans-serif;
+    font-weight: 600;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; opacity: 0.45; }
+
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 96px; }
+
+  h1 { margin: 0 0 18px; text-align: center; font-size: clamp(30px, 6vw, 46px); font-weight: 900; }
+
+  .stage { display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: start; }
+
+  /* ---------- Merlin and his speech bubble ---------- */
+
+  .merlin { display: flex; flex-direction: column; align-items: center; gap: 12px; position: sticky; top: 16px; }
+  /* A white card like the word pictures in the reading games: the picture itself has a white background */
+  .merlin img {
+    width: 220px;
+    aspect-ratio: 1;
+    object-fit: contain;
+    padding: 8px;
+    background: #fff;
+    border-radius: 28px;
+    box-shadow: 0 6px 0 var(--main-soft), 0 10px 24px rgba(61, 43, 47, 0.08);
+    transform-origin: 50% 90%;
+  }
+  .merlin.talking img { animation: talk 0.5s ease-in-out infinite alternate; }
+  .merlin.listening img { animation: listen 1.4s ease-in-out infinite; }
+  @keyframes talk { from { transform: rotate(-2deg); } to { transform: rotate(2deg) translateY(-3px); } }
+  @keyframes listen { 50% { transform: scale(1.04); } }
+
+  .bubble {
+    position: relative;
+    max-width: 240px;
+    padding: 10px 16px;
+    background: #fff;
+    border: 3px solid var(--border);
+    border-radius: 18px;
+    font-size: 17px;
+    font-weight: 800;
+    text-align: center;
+  }
+  .bubble::before {            /* the tail points up at Merlin */
+    content: "";
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    margin-left: -10px;
+    border: 10px solid transparent;
+    border-top: 0;
+    border-bottom-color: var(--border);
+  }
+
+  /* ---------- Text ---------- */
+
+  .text-box { display: flex; flex-direction: column; gap: 12px; }
+
+  #text, #reading {
+    width: 100%;
+    min-height: 280px;
+    padding: 18px 20px;
+    background: #fff;
+    border: 3px solid var(--border);
+    border-radius: 22px;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.5;
+    box-shadow: 0 4px 0 var(--border);
+  }
+  #text { resize: vertical; outline: none; }
+  #text:focus { border-color: var(--main); }
+  #text::placeholder { color: #c9bdb4; }
+  #reading { white-space: pre-wrap; overflow-wrap: anywhere; cursor: pointer; }
+  #reading[hidden], #text[hidden] { display: none; }
+  #reading .now { background: var(--now); border-radius: 8px; box-shadow: 0 0 0 3px var(--now); }
+
+  .heard { margin: 0; min-height: 1.4em; color: var(--muted); font-size: 20px; }
+
+  /* ---------- Buttons ---------- */
+
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    font-size: 21px;
+    font-weight: 900;
+    background: #fff;
+    border: 3px solid var(--border);
+    border-radius: 999px;
+    box-shadow: 0 4px 0 var(--border);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--border); }
+  .btn.primary { background: var(--main); border-color: var(--main); color: #fff; box-shadow: 0 4px 0 var(--main-dark); }
+  .btn.primary:active:not(:disabled) { box-shadow: 0 1px 0 var(--main-dark); }
+  .btn.active { background: var(--rec); border-color: var(--rec); color: #fff; box-shadow: 0 4px 0 #b9363a; }
+  .btn[hidden] { display: none; }
+
+  .settings { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; color: var(--muted); font-size: 16px; }
+  .settings label { display: inline-flex; align-items: center; gap: 8px; }
+  .settings select { max-width: 260px; padding: 4px 8px; border: 2px solid var(--border); border-radius: 10px; background: #fff; }
+  .settings input { accent-color: var(--main); }
+  .settings[hidden] { display: none; }
+
+  .note { margin: 0; color: var(--muted); font-size: 16px; }
+  .note[hidden] { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  /* ---------- Phone ---------- */
+
+  @media (max-width: 700px) {
+    main { padding: 16px 12px 84px; }
+    h1 { margin-bottom: 12px; }
+    .stage { grid-template-columns: 1fr; gap: 12px; }
+    .merlin { position: static; flex-direction: row; justify-content: center; }
+    .merlin img { width: 110px; padding: 4px; border-radius: 20px; }
+    .bubble { font-size: 15px; }
+    .bubble::before {          /* on a phone the bubble is to the right of Merlin: the tail points left */
+      top: 50%;
+      left: -12px;
+      margin: -10px 0 0;
+      border: 10px solid transparent;
+      border-left: 0;
+      border-right-color: var(--border);
+    }
+    #text, #reading { min-height: 200px; font-size: 22px; padding: 14px; }
+    .btn { font-size: 18px; padding: 10px 18px; }
+    .controls { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>🧙 Мерлин читает</h1>
+
+  <div class="stage">
+    <section id="merlin" class="merlin">
+      <img src="images/merlin.jpg" alt="Волшебник Мерлин с книгой">
+      <p id="bubble" class="bubble" role="status"></p>
+    </section>
+
+    <section class="text-box">
+      <textarea id="text" lang="ru" spellcheck="true" placeholder="Напиши здесь слово или целую сказку…" aria-label="Текст"></textarea>
+      <div id="reading" hidden title="Нажми, чтобы остановить"></div>
+      <p id="heard" class="heard" aria-live="polite"></p>
+
+      <div class="controls">
+        <button id="read" class="btn primary"><span aria-hidden="true">🔊</span><span id="read-label">Прочитать</span></button>
+        <button id="record" class="btn"><span aria-hidden="true">🎤</span><span id="record-label">Записать</span></button>
+        <button id="clear" class="btn"><span aria-hidden="true">🧹</span>Очистить</button>
+      </div>
+
+      <div id="settings" class="settings">
+        <label>Голос <select id="voice"></select></label>
+        <label>Скорость <input id="rate" type="range" min="0.5" max="1.3" step="0.1"></label>
+      </div>
+      <p id="note" class="note" hidden></p>
+    </section>
+  </div>
+</main>
+
+<script>
+// Classic inline script, no build: the page also works when opened by double-click (except the microphone,
+// which browsers give only over https or on localhost).
+
+const $ = (id) => document.getElementById(id);
+const synth = window.speechSynthesis ?? null;
+const Recognizer = window.SpeechRecognition ?? window.webkitSpeechRecognition ?? null;
+const LANG = "ru-RU";
+const STORE = "merlin"; // localStorage key prefix
+
+function load(key, fallback) {
+  try {
+    return localStorage.getItem(`${STORE}:${key}`) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function save(key, value) {
+  try {
+    localStorage.setItem(`${STORE}:${key}`, value);
+  } catch {
+    // Private mode or blocked storage: settings live until the page is closed
+  }
+}
+
+// idle — waiting; reading — Merlin reads the text; recording — the microphone writes speech down
+let state = "idle";
+let message = "";
+let voices = [];
+let readToken = 0; // events of an older reading (cancelled sentences fire «error») must not stop a newer one
+
+const text = $("text");
+text.value = load("text", "");
+
+// ---------- Voices ----------
+
+/** Better voices first: the user's choice, then the nicer system ones, then any Russian voice. */
+function rank(voice) {
+  if (voice.name === load("voice", "")) return 0;
+  if (/Milena.*(Enhanced|Premium)|Милена.*(улучш|премиум)/i.test(voice.name)) return 1;
+  if (/Google/.test(voice.name)) return 2;
+  if (/Milena|Милена|Yuri|Юрий|Irina|Svetlana|Dariya/i.test(voice.name)) return 3;
+  return voice.localService ? 4 : 5;
+}
+
+function fillVoices() {
+  voices = synth.getVoices().filter((v) => v.lang.replace("_", "-").toLowerCase().startsWith("ru"));
+  voices.sort((a, b) => rank(a) - rank(b));
+  const select = $("voice");
+  select.replaceChildren(...voices.map((v) => new Option(v.name, v.name)));
+  render();
+}
+
+// ---------- Reading aloud ----------
+
+/** Shows the text as words, so the one being read can light up. */
+function buildReadingView(value) {
+  const view = $("reading");
+  view.replaceChildren();
+  let last = 0;
+  for (const m of value.matchAll(/\S+/g)) {
+    if (m.index > last) view.append(value.slice(last, m.index));
+    const span = document.createElement("span");
+    span.textContent = m[0];
+    span.dataset.start = String(m.index);
+    span.dataset.end = String(m.index + m[0].length);
+    view.append(span);
+    last = m.index + m[0].length;
+  }
+  view.append(value.slice(last));
+}
+
+function highlight(pos) {
+  const view = $("reading");
+  view.querySelector(".now")?.classList.remove("now");
+  for (const span of view.querySelectorAll("span")) {
+    if (pos < Number(span.dataset.end)) {
+      if (pos >= Number(span.dataset.start) - 1) span.classList.add("now");
+      break;
+    }
+  }
+}
+
+/**
+ * Reads the text sentence by sentence: Chrome cuts long utterances off after ~15 seconds.
+ * All sentences are queued at once, which iOS needs (it speaks only right after a tap).
+ */
+function startReading() {
+  const value = text.value;
+  if (!value.trim()) {
+    message = "Сначала напиши что-нибудь — и я прочитаю!";
+    render();
+    text.focus();
+    return;
+  }
+  stopRecording();
+  synth.cancel();
+  const token = ++readToken;
+  buildReadingView(value);
+  state = "reading";
+  message = "";
+  render();
+
+  const voice = voices.find((v) => v.name === $("voice").value) ?? null;
+  const sentences = [...value.matchAll(/[^.!?…\n]+[.!?…]*/g)].filter((m) => m[0].trim());
+  sentences.forEach((m, i) => {
+    const utterance = new SpeechSynthesisUtterance(m[0]);
+    utterance.lang = LANG;
+    if (voice) utterance.voice = voice;
+    utterance.rate = Number($("rate").value);
+    utterance.onstart = () => token === readToken && highlight(m.index + m[0].search(/\S/));
+    // Word boundaries come from local voices (not from every online one): then each word lights up
+    utterance.onboundary = (e) => {
+      if (token === readToken && e.name === "word") highlight(m.index + e.charIndex);
+    };
+    if (i === sentences.length - 1) utterance.onend = utterance.onerror = () => token === readToken && stopReading();
+    synth.speak(utterance);
+  });
+}
+
+function stopReading() {
+  if (state !== "reading") return;
+  readToken++;
+  synth.cancel();
+  state = "idle";
+  render();
+}
+
+// ---------- Writing speech down ----------
+
+let recognition = null;
+let interim = "";
+
+/** Adds a recognized phrase: a space before it, a capital letter at the start of a sentence. */
+function append(phrase) {
+  let t = phrase.trim();
+  if (!t) return;
+  const current = text.value;
+  if (!current.trim() || /[.!?…]\s*$/.test(current)) t = t[0].toUpperCase() + t.slice(1);
+  text.value = current + (current && !/\s$/.test(current) ? " " : "") + t;
+  save("text", text.value);
+}
+
+function startRecording() {
+  stopReading();
+  const rec = new Recognizer();
+  rec.lang = LANG;
+  rec.continuous = true; // keep writing through pauses until «Стоп»
+  rec.interimResults = true; // show the words while they are being said
+  rec.onresult = (e) => {
+    interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const result = e.results[i];
+      if (result.isFinal) append(result[0].transcript);
+      else interim += result[0].transcript;
+    }
+    render();
+  };
+  rec.onerror = (e) => {
+    if (["not-allowed", "service-not-allowed", "audio-capture"].includes(e.error)) {
+      message = "Мне не дали микрофон — разреши его в настройках браузера.";
+    } else if (e.error === "network") {
+      message = "Чтобы записывать, нужен интернет.";
+    } else if (e.error === "no-speech") {
+      message = "Я ничего не услышал. Говори погромче!";
+    }
+  };
+  rec.onend = () => {
+    if (recognition !== rec) return;
+    recognition = null;
+    interim = "";
+    state = "idle";
+    render();
+  };
+  recognition = rec;
+  state = "recording";
+  message = "";
+  interim = "";
+  try {
+    rec.start();
+  } catch {
+    recognition = null;
+    state = "idle";
+  }
+  render();
+}
+
+function stopRecording() {
+  if (!recognition) return;
+  recognition.stop(); // onend finishes: the last phrase still arrives as a final result
+}
+
+// ---------- Rendering ----------
+
+function bubbleText() {
+  if (message) return message;
+  if (state === "reading") return "Читаю… 📖";
+  if (state === "recording") return "Слушаю! Говори, а я запишу ✍️";
+  return text.value.trim() ? "Нажми «Прочитать» — и я прочитаю!" : "Напиши что-нибудь — я прочитаю. Или скажи — я запишу!";
+}
+
+function render() {
+  const reading = state === "reading";
+  const recording = state === "recording";
+  $("merlin").classList.toggle("talking", reading);
+  $("merlin").classList.toggle("listening", recording);
+  $("bubble").textContent = bubbleText();
+
+  text.hidden = reading;
+  $("reading").hidden = !reading;
+  $("heard").textContent = recording && interim ? `Слышу: ${interim}` : "";
+
+  $("read").hidden = !synth;
+  $("read-label").textContent = reading ? "Стоп" : "Прочитать";
+  $("read").disabled = recording;
+  $("record").hidden = !Recognizer;
+  $("record").classList.toggle("active", recording);
+  $("record-label").textContent = recording ? "Стоп" : "Записать";
+  $("record").disabled = reading;
+  $("clear").disabled = reading || recording || !text.value;
+  $("settings").hidden = !synth || !voices.length;
+
+  const notes = [];
+  if (!synth) notes.push("Этот браузер не умеет читать вслух.");
+  else if (!voices.length) notes.push("В этом браузере не нашлось русского голоса — его можно добавить в настройках системы (речь, голоса).");
+  if (!Recognizer) notes.push("Записывать голос умеют Chrome, Edge и Safari.");
+  $("note").hidden = !notes.length;
+  $("note").textContent = notes.join(" ");
+}
+
+// ---------- Startup ----------
+
+$("rate").value = load("rate", "0.9");
+$("read").onclick = () => (state === "reading" ? stopReading() : startReading());
+$("reading").onclick = stopReading;
+$("record").onclick = () => (state === "recording" ? stopRecording() : startRecording());
+$("clear").onclick = () => {
+  text.value = "";
+  save("text", "");
+  message = "";
+  render();
+  text.focus();
+};
+text.oninput = () => {
+  save("text", text.value);
+  message = "";
+  render();
+};
+$("voice").onchange = () => save("voice", $("voice").value);
+$("rate").onchange = () => save("rate", $("rate").value);
+
+if (synth) {
+  fillVoices();
+  synth.onvoiceschanged = fillVoices; // Chrome lists its voices a moment after the page loads
+}
+render();
+</script>
+</body>
+</html>

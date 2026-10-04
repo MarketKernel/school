@@ -23,6 +23,7 @@
 | 🔎 Уравнения с дробями | Дроби | [lessons/fractions-equations](lessons/fractions-equations) |
 | 🗣️ Скажи по-английски — 300 первых слов: послушай и повтори | Английский | [lessons/english-words](lessons/english-words) |
 | 👂 Найди картинку — услышь слово и выбери одну из четырёх картинок | Английский | [lessons/english-pictures](lessons/english-pictures) |
+| 🧙 Мерлин читает — напиши текст, и браузер прочитает его вслух; или продиктуй — и он запишет | Помощники | [lessons/merlin](lessons/merlin) |
 
 Уроки чтения собираются из общего движка [lessons/read-game](lessons/read-game) (два режима: собрать слово из карточек или прочитать вслух), а звуки букв и слогов берут из общей папки [lessons/russian](lessons/russian). Слова и картинки из «Гарри Поттера» — в общей папке [lessons/potter](lessons/potter), их используют два урока. Новый урок чтения — это папка с `game.json` (и своими словами или ссылкой на общие), без своего кода.
 

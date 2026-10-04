@@ -2,7 +2,7 @@
 
 What to draw: <folder>/data/pictures.tsv (level, word, description); the shared style of the pictures:
 "pictureStyle" in <folder>/game.json. The folder is a lesson, or a shared word folder (lessons/potter) that keeps
-pictureStyle in its shared.json.
+pictureStyle in its shared.json; a plain page without game.json (lessons/merlin) keeps it in lesson.json.
 Key: OPENAI_API_KEY from the environment or from the .env file at the repo root.
 
 Output (in that folder):
@@ -62,7 +62,8 @@ def read_pictures(path: Path) -> list[dict]:
     return rows
 
 
-STYLE_FILES = ["game.json", "shared.json"]  # where pictureStyle lives: a lesson or a shared word folder
+# Where pictureStyle lives: a reading lesson, a shared word folder, a plain page
+STYLE_FILES = ["game.json", "shared.json", "lesson.json"]
 
 
 def find_folder(name: str) -> Path:
