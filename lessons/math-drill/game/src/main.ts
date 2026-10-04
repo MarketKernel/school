@@ -1,16 +1,17 @@
 // Arithmetic drill: an example like «3 + 4 = ?» written in notebook cells, four answers below and a few
 // seconds to pick one — too little to reach for a calculator. Counts right answers and the average time.
-// One engine serves several lessons: each lesson's drill.json picks the operation (build_scripts/build.mjs).
+// Levels go from easy to hard; a round asks every example of the level once, and the best result of each
+// level is kept in the browser as stars.
+// One engine serves several lessons: each lesson's drill.json picks the operation and the levels (build_scripts/build.mjs).
 
-// The build puts the lesson title and drill.json into data.js
+// The build puts the lesson title, settings and examples sorted into levels into data.js
 declare const GAME_DATA: {
+  slug: string; // lesson folder name
   title: string;
   icon: string;
   op: Op;
-  from: number;
-  to: number;
   seconds: number;
-  count: number;
+  levels: { name: string; hint: string; examples: [number, number, number][] }[]; // [a, b, answer]
 };
 
 type Op = "add" | "sub" | "mul" | "div";
@@ -19,37 +20,16 @@ const CHOICES = 4; // answer buttons: one right, the rest wrong
 const PAUSE_OK = 700; // ms a right answer stays on screen before the next example
 const PAUSE_BAD = 1800; // ms the right answer is shown after a mistake or a timeout
 const HURRY = 0.33; // share of time left when the timer turns red
+const STARS = [0.5, 0.7, 0.9]; // share of right answers for one, two and three stars
+const NEXT_LEVEL_STARS = 2; // from this many stars the results dialog suggests the next level
 
 const SIGNS: Record<Op, string> = { add: "+", sub: "−", mul: "×", div: "÷" };
 const PRAISE = ["Верно!", "Молодец!", "Здорово!", "Точно!", "Отлично!"];
-
-// ---------- Examples ----------
 
 interface Example {
   a: number;
   b: number;
   answer: number;
-}
-
-const solve = (op: Op, x: number, y: number): Example | null => {
-  switch (op) {
-    case "add": return { a: x, b: y, answer: x + y };
-    case "sub": return { a: x + y, b: y, answer: x }; // addition read backwards — never negative
-    case "mul": return { a: x, b: y, answer: x * y };
-    case "div": return y === 0 ? null : { a: x * y, b: y, answer: x }; // multiplication backwards — always whole
-  }
-};
-
-/** Every example of the drill: x and y run over [from, to]. */
-function allExamples(): Example[] {
-  const list: Example[] = [];
-  for (let x = GAME_DATA.from; x <= GAME_DATA.to; x++) {
-    for (let y = GAME_DATA.from; y <= GAME_DATA.to; y++) {
-      const e = solve(GAME_DATA.op, x, y);
-      if (e) list.push(e);
-    }
-  }
-  return list;
 }
 
 const random = <T>(list: T[]): T => list[Math.floor(Math.random() * list.length)]!;
@@ -82,10 +62,47 @@ function wrongAnswers({ a, b, answer }: Example): number[] {
   return picked;
 }
 
+// ---------- Best results, kept in the browser ----------
+
+interface Best {
+  right: number;
+  total: number;
+  avg: number | null; // seconds per right answer
+}
+
+const bestKey = (i: number) => `math-drill:${GAME_DATA.slug}:${GAME_DATA.levels[i]!.name}`;
+const starsFor = (r: Best) => STARS.filter((s) => r.right / r.total >= s).length;
+
+// Storage can be missing or blocked (private mode, some file:// setups) — the drill works without it, just forgets
+function loadBest(i: number): Best | null {
+  try {
+    const raw = localStorage.getItem(bestKey(i));
+    return raw ? (JSON.parse(raw) as Best) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Saves the result if it beats the best one: more right answers, or as many but faster. */
+function saveBest(i: number, result: Best): boolean {
+  const old = loadBest(i);
+  const share = result.right / result.total;
+  const oldShare = old ? old.right / old.total : -1;
+  const faster = result.avg !== null && (old?.avg == null || result.avg < old.avg);
+  if (old && (share < oldShare || (share === oldShare && !faster))) return false;
+  try {
+    localStorage.setItem(bestKey(i), JSON.stringify(result));
+  } catch {
+    // not saved — fine
+  }
+  return true;
+}
+
 // ---------- Game state ----------
 
-let examples: Example[] = [];
-let deck: Example[] = []; // examples don't repeat until all have been asked
+let levels: Example[][] = [];
+let level = 0;
+let queue: Example[] = []; // examples left in this round
 let maxAnswer = 0;
 let cols = 0; // notebook cells across the paper
 
@@ -101,7 +118,9 @@ let times: number[] = []; // seconds spent on each right answer
 let shownAt = 0; // performance.now() when the example appeared, shifted forward while the page is hidden
 let hiddenAt = 0;
 let frame = 0;
+let pending = 0; // timeout that brings the next example
 
+const roundSize = () => levels[level]!.length;
 const elapsed = () => performance.now() - shownAt;
 const average = () => (times.length ? times.reduce((s, t) => s + t, 0) / times.length : null);
 const formatSeconds = (s: number) => `${s.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} с`;
@@ -115,21 +134,38 @@ function plural(n: number, forms: [string, string, string]): string {
   return forms[2];
 }
 
-function startRound() {
+function resetScore() {
   asked = right = wrong = 0;
   times = [];
+}
+
+function stopRound() {
+  cancelAnimationFrame(frame);
+  clearTimeout(pending);
+}
+
+/** Picks a level and waits for «Начать»; a round in progress is dropped. */
+function setLevel(i: number) {
+  stopRound();
+  level = i;
+  phase = "start";
+  resetScore();
+  $("overlay").hidden = true;
+  render();
+}
+
+function startRound() {
+  stopRound();
+  resetScore();
+  queue = shuffle(levels[level]!);
   $("overlay").hidden = true;
   nextExample();
 }
 
 function nextExample() {
-  if (asked === GAME_DATA.count) return finishRound();
-  if (!deck.length) {
-    deck = shuffle(examples);
-    // The first card of a new deck must not repeat the last one asked
-    if (deck.length > 1 && deck[deck.length - 1] === example) deck.reverse();
-  }
-  example = deck.pop()!;
+  const next = queue.pop();
+  if (!next) return finishRound();
+  example = next;
   options = [example.answer, ...wrongAnswers(example)].sort((x, y) => x - y);
   picked = null;
   asked++;
@@ -163,7 +199,7 @@ function choose(value: number | null) {
   phase = "show";
   chime(ok);
   render();
-  setTimeout(nextExample, ok ? PAUSE_OK : PAUSE_BAD);
+  pending = setTimeout(nextExample, ok ? PAUSE_OK : PAUSE_BAD);
 }
 
 /** The timer pauses while the page is hidden (another tab, a locked phone) — that time doesn't count. */
@@ -216,44 +252,48 @@ function confetti(amount = 28) {
   }
 }
 
-// ---------- Start and results dialogs ----------
+// ---------- Results dialog ----------
 
-function showDialog(icon: string, title: string, text: string, button: string) {
-  $("overlay-icon").textContent = icon;
-  $("overlay-title").textContent = title;
-  $("overlay-text").textContent = text;
-  $("overlay-btn").textContent = button;
-  $("overlay").hidden = false;
-}
-
-function showStart() {
-  const { count, seconds } = GAME_DATA;
-  showDialog(
-    GAME_DATA.icon,
-    GAME_DATA.title,
-    `${count} ${plural(count, ["пример", "примера", "примеров"])}, на каждый — ` +
-      `${seconds} ${plural(seconds, ["секунда", "секунды", "секунд"])}. Нажимай на правильный ответ!`,
-    "Начать",
-  );
-}
+const RESULTS: [string, string][] = [
+  ["💪", "Тренируемся дальше!"], // by stars: 0…3
+  ["👍", "Хорошо!"],
+  ["⭐", "Молодец!"],
+  ["🏆", "Отлично!"],
+];
 
 function finishRound() {
   phase = "done";
-  render();
-  const share = right / GAME_DATA.count;
-  const [icon, title] =
-    share >= 0.9 ? ["🏆", "Отлично!"] :
-    share >= 0.7 ? ["⭐", "Молодец!"] :
-    share >= 0.5 ? ["👍", "Хорошо!"] :
-    ["💪", "Тренируемся дальше!"];
   const avg = average();
-  showDialog(
-    icon,
-    title,
-    `Верно: ${right} из ${GAME_DATA.count}.` + (avg === null ? "" : ` Среднее время ответа: ${formatSeconds(avg)}.`),
-    "Ещё раз",
-  );
-  if (share >= 0.7) confetti();
+  const result: Best = { right, total: roundSize(), avg };
+  const hadBest = loadBest(level) !== null;
+  const record = saveBest(level, result) && hadBest;
+  const stars = starsFor(result);
+  render();
+
+  const [icon, title] = RESULTS[stars]!;
+  $("overlay-icon").textContent = icon;
+  $("overlay-title").textContent = title;
+  $("overlay-stars").replaceChildren(...starIcons(stars));
+  $("overlay-text").textContent =
+    `Верно: ${right} из ${result.total}.` +
+    (avg === null ? "" : ` Среднее время ответа: ${formatSeconds(avg)}.`) +
+    (record ? " Новый рекорд!" : "");
+
+  // A good result suggests the next level; «Ещё раз» is always there
+  const next = GAME_DATA.levels[level + 1];
+  const primary = $("overlay-btn");
+  const again = $("overlay-again");
+  if (next && stars >= NEXT_LEVEL_STARS) {
+    primary.textContent = `Дальше: ${next.name} →`;
+    primary.onclick = () => setLevel(level + 1);
+    again.hidden = false;
+  } else {
+    primary.textContent = "Ещё раз";
+    primary.onclick = startRound;
+    again.hidden = true;
+  }
+  $("overlay").hidden = false;
+  if (stars >= 2) confetti();
 }
 
 // ---------- Rendering ----------
@@ -261,12 +301,36 @@ function finishRound() {
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const digits = (n: number) => String(n).length;
 
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text = "") {
+  const node = document.createElement(tag);
+  node.className = cls;
+  node.textContent = text;
+  return node;
+}
+
+/** Three stars, the first `n` of them lit. */
+const starIcons = (n: number) => [0, 1, 2].map((i) => el("i", i < n ? "on" : "", "★"));
+
+function renderLevels() {
+  $("levels").replaceChildren(
+    ...GAME_DATA.levels.map((lvl, i) => {
+      const best = loadBest(i);
+      const btn = el("button", "level" + (i === level ? " current" : ""));
+      btn.title = lvl.hint + (best ? `. Лучший результат: ${best.right} из ${best.total}` : "");
+      btn.setAttribute("aria-pressed", String(i === level));
+      const stars = el("span", "stars");
+      stars.replaceChildren(...starIcons(best ? starsFor(best) : 0));
+      btn.append(el("span", "level-num", String(i + 1)), el("span", "level-name", lvl.name), stars);
+      btn.onclick = () => setLevel(i);
+      return btn;
+    }),
+  );
+}
+
 function cell(text: string, col: number, span = 1, cls = "") {
-  const el = document.createElement("span");
-  el.className = `cell ${cls}`.trim();
-  el.textContent = text;
-  el.style.gridColumn = `${col} / span ${span}`;
-  return el;
+  const node = el("span", `cell ${cls}`.trim(), text);
+  node.style.gridColumn = `${col} / span ${span}`;
+  return node;
 }
 
 /**
@@ -283,9 +347,9 @@ function renderPaper() {
   const result = picked === answer ? "ok" : "bad";
   paper.replaceChildren(
     ...parts.map((text) => {
-      const el = cell(phase === "start" ? "" : text, col, text.length);
+      const node = cell(phase === "start" ? "" : text, col, text.length);
       col += text.length;
-      return el;
+      return node;
     }),
     cell(ask ? "" : String(answer), cols - box, box, `answer ${ask ? "" : result}`),
   );
@@ -299,13 +363,17 @@ function renderTimer(left: number) {
 }
 
 function renderOptions() {
+  if (phase === "start") {
+    const start = el("button", "btn primary start", "▶ Начать");
+    start.onclick = startRound;
+    $("options").replaceChildren(start);
+    return;
+  }
   $("options").replaceChildren(
     ...options.map((n) => {
-      const btn = document.createElement("button");
-      btn.className = "option";
-      btn.textContent = String(n);
+      const btn = el("button", "option", String(n));
       btn.disabled = phase !== "ask";
-      if (phase === "show") {
+      if (phase !== "ask") {
         if (n === example.answer) btn.classList.add("ok");
         else if (n === picked) btn.classList.add("bad");
         else btn.classList.add("dim");
@@ -317,7 +385,7 @@ function renderOptions() {
 }
 
 function renderScore() {
-  $("progress").textContent = `${asked} / ${GAME_DATA.count}`;
+  $("progress").textContent = `${asked} / ${roundSize()}`;
   $("right").textContent = String(right);
   $("wrong").textContent = String(wrong);
   const avg = average();
@@ -328,15 +396,20 @@ function renderMessage() {
   const msg = $("message");
   const { a, b, answer } = example;
   const full = `${a} ${SIGNS[GAME_DATA.op]} ${b} = ${answer}`;
-  msg.className = phase === "show" ? (picked === answer ? "ok" : "bad") : "";
+  const n = roundSize();
+  const s = GAME_DATA.seconds;
+  msg.className = phase === "start" ? "info" : picked === answer ? "ok" : "bad";
   msg.textContent =
-    phase !== "show" ? "" :
+    phase === "start" ? `${GAME_DATA.levels[level]!.hint}: ${n} ${plural(n, ["пример", "примера", "примеров"])}, ` +
+      `на каждый — ${s} ${plural(s, ["секунда", "секунды", "секунд"])}` :
+    phase === "ask" ? "" :
     picked === answer ? random(PRAISE) :
     picked === null ? `⌛ Время вышло: ${full}` :
     `Запомни: ${full}`;
 }
 
 function render() {
+  renderLevels();
   renderScore();
   renderPaper();
   renderOptions();
@@ -352,25 +425,33 @@ function main() {
     return;
   }
   document.body.dataset.op = GAME_DATA.op;
-  examples = allExamples();
-  maxAnswer = Math.max(...examples.map((e) => e.answer));
-  // Widest example + the answer box + a margin cell on each side
-  const widest = Math.max(...examples.map((e) => digits(e.a) + digits(e.b))) + 2;
-  cols = widest + digits(maxAnswer) + 2;
+  levels = GAME_DATA.levels.map((lvl) => lvl.examples.map(([a, b, answer]) => ({ a, b, answer })));
+  const all = levels.flat();
+  maxAnswer = Math.max(...all.map((e) => e.answer));
+  // The widest example + the answer box + a margin cell on each side
+  cols = Math.max(...all.map((e) => digits(e.a) + digits(e.b))) + 2 + digits(maxAnswer) + 2;
   document.body.style.setProperty("--cols", String(cols)); // sizes the paper and the timer under it
 
-  $("overlay-btn").onclick = startRound;
+  $("overlay-again").onclick = startRound;
+  // A tap outside the results card closes it, back to the level's start
+  $("overlay").onclick = (e) => {
+    if (e.target === $("overlay")) setLevel(level);
+  };
   document.addEventListener("visibilitychange", onVisibility);
   document.addEventListener("keydown", (e) => {
-    // A focused button handles Enter and Space by itself
-    if (!$("overlay").hidden && document.activeElement !== $("overlay-btn") && (e.key === "Enter" || e.key === " ")) {
-      e.preventDefault();
-      $("overlay-btn").click();
-    }
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (document.activeElement instanceof HTMLButtonElement) return; // a focused button handles them itself
+    e.preventDefault();
+    if (!$("overlay").hidden) $("overlay-btn").click();
+    else if (phase === "start") startRound();
   });
 
-  render();
-  showStart();
+  // Start from the first level that isn't mastered yet
+  const open = GAME_DATA.levels.findIndex((_, i) => {
+    const best = loadBest(i);
+    return !best || starsFor(best) < STARS.length;
+  });
+  setLevel(open < 0 ? 0 : open);
 }
 
 main();

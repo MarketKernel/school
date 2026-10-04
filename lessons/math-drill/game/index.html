@@ -13,6 +13,7 @@
 </head>
 <body>
 <header>
+  <nav id="levels" class="levels" aria-label="Уровни"></nav>
   <div class="score" aria-label="Счёт">
     <span class="chip" title="Пример из раунда"><span id="progress">0 / 0</span></span>
     <span class="chip ok" title="Верных ответов">✅ <span id="right">0</span></span>
@@ -32,8 +33,12 @@
   <div class="card" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
     <div id="overlay-icon" class="card-icon"></div>
     <h2 id="overlay-title"></h2>
+    <div id="overlay-stars" class="stars big" aria-hidden="true"></div>
     <p id="overlay-text"></p>
-    <button id="overlay-btn" class="btn primary"></button>
+    <div class="card-buttons">
+      <button id="overlay-again" class="btn">Ещё раз</button>
+      <button id="overlay-btn" class="btn primary"></button>
+    </div>
   </div>
 </div>
 

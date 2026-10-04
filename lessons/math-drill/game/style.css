@@ -11,6 +11,7 @@
   --bad: #e5484d;
   --bad-bg: #ffe4e4;
   --border: #eadfcd;
+  --gold: #f5b301;         /* stars */
   --accent: #ff7096;       /* each operation has its own colour, see body[data-op] */
   --accent-dark: #e04f78;
   --accent-soft: #ffe1ea;
@@ -43,7 +44,56 @@ button:disabled { cursor: default; }
 
 /* ---------- Score ---------- */
 
-header { padding: 14px 16px 0; }
+header { padding: 14px 16px 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+/* ---------- Levels ---------- */
+
+.levels {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.level {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas: "num name" "num stars";
+  align-items: center;
+  column-gap: 10px;
+  padding: 6px 16px 6px 8px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 3px solid transparent;
+  border-radius: 18px;
+  text-align: left;
+  transition: transform 0.15s, background 0.15s;
+}
+.level:hover { transform: translateY(-2px); }
+.level.current { background: #fff; border-color: var(--accent); box-shadow: 0 4px 0 var(--accent-soft); }
+.level-num {
+  grid-area: num;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 22px;
+  font-weight: 900;
+}
+.level.current .level-num { background: var(--accent); color: #fff; }
+.level-name { grid-area: name; font-size: 16px; font-weight: 800; white-space: nowrap; }
+
+.stars { grid-area: stars; display: flex; gap: 1px; font-size: 15px; line-height: 1; }
+.stars i { font-style: normal; color: #e7ddd0; }
+.stars i.on { color: var(--gold); }
+.stars.big { justify-content: center; gap: 6px; margin-bottom: 10px; font-size: 40px; }
+.stars.big i.on { animation: pop 0.4s ease-out both; }
+.stars.big i:nth-child(2) { animation-delay: 0.15s; }
+.stars.big i:nth-child(3) { animation-delay: 0.3s; }
+
+/* ---------- Score ---------- */
 
 .score {
   display: flex;
@@ -123,6 +173,7 @@ main {
 
 #message { margin: 0; min-height: 1.4em; font-size: 28px; font-weight: 900; text-align: center; }
 #message.ok { color: var(--ok); animation: pop 0.3s ease-out; }
+#message.info { color: var(--muted); font-size: 20px; font-weight: 800; }
 #message.bad { color: var(--bad); }
 
 /* ---------- Answers ---------- */
@@ -153,6 +204,8 @@ main {
 .option.ok { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); box-shadow: 0 6px 0 var(--ok); }
 .option.bad { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); box-shadow: 0 6px 0 var(--bad); }
 .option.dim { opacity: 0.35; }
+
+.btn.start { grid-column: 1 / -1; justify-self: center; font-size: 30px; padding: 16px 48px; }
 
 /* ---------- Start and results dialogs ---------- */
 
@@ -192,8 +245,10 @@ main {
   animation: pop 0.35s ease-out;
 }
 .card-icon { font-size: 84px; line-height: 1.1; }
-.card h2 { margin: 10px 0 6px; font-size: 30px; font-weight: 900; }
+.card h2 { margin: 10px 0 8px; font-size: 30px; font-weight: 900; }
 .card p { margin: 0 0 22px; color: var(--muted); font-size: 18px; }
+.card-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.card-buttons [hidden] { display: none; }
 
 /* ---------- Confetti ---------- */
 
@@ -214,7 +269,14 @@ main {
 /* ---------- Phone ---------- */
 
 @media (max-width: 700px) {
-  header { padding: 10px 8px 0; }
+  header { padding: 10px 8px 0; gap: 8px; }
+  .levels { gap: 6px; }
+  .level { grid-template-columns: auto; grid-template-areas: "num" "stars"; justify-items: center; row-gap: 3px; padding: 5px 10px; }
+  .level-name { display: none; }
+  .level-num { width: 32px; height: 32px; font-size: 19px; }
+  .stars { font-size: 13px; }
+  #message.info { font-size: 17px; }
+  .btn.start { font-size: 26px; padding: 14px 40px; }
   .score { gap: 6px; }
   .chip { font-size: 16px; padding: 4px 11px; }
   main { padding: 18px 16px 70px; gap: 12px; }
