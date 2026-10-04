@@ -1,0 +1,9 @@
+{
+  "title": "Уравнения с дробями",
+  "description": "Найди x: x + 1/3 = 5/6, 2/3 × x = 1/3 — все четыре действия вперемешку. 2 уровня, на каждый пример — 10 секунд.",
+  "subject": "Дроби",
+  "icon": "🔎",
+  "order": 35,
+  "build": "(cd ../math-drill/game && npm ci) && node ../math-drill/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

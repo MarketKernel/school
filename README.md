@@ -13,8 +13,14 @@
 | ➗ Деление — умножение наоборот | Математика | [lessons/math-division](lessons/math-division) |
 | 🎲 Всё вперемешку — четыре действия в одном раунде | Математика | [lessons/math-mix](lessons/math-mix) |
 | 🔎 Уравнения — найди x, четыре действия вперемешку | Математика | [lessons/math-equations](lessons/math-equations) |
+| ➕ Сложение дробей | Дроби | [lessons/fractions-addition](lessons/fractions-addition) |
+| ➖ Вычитание дробей | Дроби | [lessons/fractions-subtraction](lessons/fractions-subtraction) |
+| ✖️ Умножение дробей | Дроби | [lessons/fractions-multiplication](lessons/fractions-multiplication) |
+| ➗ Деление дробей | Дроби | [lessons/fractions-division](lessons/fractions-division) |
+| 🎲 Дроби вперемешку | Дроби | [lessons/fractions-mix](lessons/fractions-mix) |
+| 🔎 Уравнения с дробями | Дроби | [lessons/fractions-equations](lessons/fractions-equations) |
 
-Тренажёры на счёт собираются из общего движка [lessons/math-drill](lessons/math-drill): новый тренажёр — это папка с `lesson.json` и `drill.json`, без своего кода.
+Тренажёры на счёт и на дроби собираются из общего движка [lessons/math-drill](lessons/math-drill): новый тренажёр — это папка с `lesson.json` и `drill.json`, без своего кода.
 
 ## Как устроено
 

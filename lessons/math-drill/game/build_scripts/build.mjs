@@ -18,6 +18,11 @@
 //     tables — mul/div: the level takes examples where x or y is one of these numbers
 //   Every example goes to the first level that takes it.
 //
+// A fraction drill has "fractions": true instead of from/to, and every level has { name, hint, upTo } whatever the op.
+// Its numbers are proper fractions with a denominator up to upTo (1/2, 2/3, 3/5…) and whole numbers up to upTo; an
+// example has at least one fraction, its answer is reduced (2/4 → 1/2), and subtraction stays above zero. A level
+// takes examples whose numbers all fit in its upTo.
+//
 // A mixed drill has `mix` instead of op/from/to: a list of other drill lessons (folder names). Its level N is
 // level N of each of them together, so its levels list only { name, hint }. With `count`, a round takes the
 // same number of examples from each of them.
@@ -50,6 +55,7 @@ function drillLevels(drill, where) {
     throw new Error(`${where}: ${text}`);
   };
   if (!["add", "sub", "mul", "div"].includes(drill.op)) fail(`op должен быть add, sub, mul или div, а не ${drill.op}`);
+  if (drill.fractions) return fractionLevels(drill, fail);
   if (!isInt(drill.from) || !isInt(drill.to) || drill.from > drill.to) fail("from и to — целые числа от 0, from ≤ to");
   if (drill.op === "div" && drill.to === 0) fail("для деления нужен делитель больше 0 — увеличьте to");
   const byTables = drill.op === "mul" || drill.op === "div";
@@ -83,6 +89,47 @@ function drillLevels(drill, where) {
   const empty = levels.find((level) => !level.examples.length);
   if (empty) fail(`в уровень «${empty.name}» не попал ни один пример — проверьте ${key}`);
   if (unused) console.log(`${where}: не попали ни в один уровень — ${unused} примеров`);
+  return levels.map(({ name, hint, examples }) => ({ name, hint, groups: [{ op: drill.op, examples }] }));
+}
+
+// ---------- Fractions ----------
+
+const gcd = (x, y) => (y ? gcd(y, x % y) : Math.abs(x));
+const frac = (n, d) => ({ n: n / gcd(n, d), d: d / gcd(n, d) });
+const fractionOps = {
+  add: (x, y) => frac(x.n * y.d + y.n * x.d, x.d * y.d),
+  sub: (x, y) => frac(x.n * y.d - y.n * x.d, x.d * y.d),
+  mul: (x, y) => frac(x.n * y.n, x.d * y.d),
+  div: (x, y) => frac(x.n * y.d, x.d * y.n),
+};
+// In data.js a whole number stays a number and a fraction becomes "n/d"
+const raw = (x) => (x.d === 1 ? x.n : `${x.n}/${x.d}`);
+
+/** Levels of a fraction drill: numbers are proper fractions and whole numbers up to the level's upTo. */
+function fractionLevels(drill, fail) {
+  if (!Array.isArray(drill.levels) || !drill.levels.length) fail("нужен список уровней levels");
+  for (const level of drill.levels) {
+    if (!level.name || !level.hint || !isInt(level.upTo) || level.upTo < 2) {
+      fail(`у уровня ${JSON.stringify(level)} должны быть name, hint и upTo от 2`);
+    }
+  }
+  const top = Math.max(...drill.levels.map((level) => level.upTo));
+  const numbers = [];
+  for (let d = 2; d <= top; d++) for (let n = 1; n < d; n++) if (gcd(n, d) === 1) numbers.push({ n, d });
+  for (let n = 1; n <= top; n++) numbers.push({ n, d: 1 });
+  const size = (x) => Math.max(x.n, x.d); // 2/5 and 5 both need a level up to 5
+
+  const levels = drill.levels.map((level) => ({ name: level.name, hint: level.hint, examples: [] }));
+  for (const x of numbers) {
+    for (const y of numbers) {
+      if (x.d === 1 && y.d === 1) continue; // whole numbers only — that's the integer drills
+      if (drill.op === "sub" && x.n * y.d <= y.n * x.d) continue; // no zero or negative differences
+      const i = drill.levels.findIndex((level) => Math.max(size(x), size(y)) <= level.upTo);
+      if (i >= 0) levels[i].examples.push([raw(x), raw(y), raw(fractionOps[drill.op](x, y))]);
+    }
+  }
+  const empty = levels.find((level) => !level.examples.length);
+  if (empty) fail(`в уровень «${empty.name}» не попал ни один пример — проверьте upTo`);
   return levels.map(({ name, hint, examples }) => ({ name, hint, groups: [{ op: drill.op, examples }] }));
 }
 
@@ -150,7 +197,8 @@ writeFileSync(join(out, "data.js"), `const GAME_DATA = ${JSON.stringify(data)};\
 
 const size = (level) => level.groups.reduce((n, g) => n + g.examples.length, 0);
 console.log(`Готово: ${out}`);
-console.log(`${drill.mix ? `Вперемешку: ${drill.mix.join(", ")}` : `Действие: ${drill.op}, числа ${drill.from}–${drill.to}`}` +
+const range = drill.fractions ? "дроби" : `числа ${drill.from}–${drill.to}`;
+console.log(`${drill.mix ? `Вперемешку: ${drill.mix.join(", ")}` : `Действие: ${drill.op}, ${range}`}` +
   `${drill.unknown ? ", уравнения с x" : ""}, ` +
   `${drill.seconds} с на пример, ${drill.count ? `${drill.count} примеров в раунде` : "раунд — весь уровень"}. ` +
   `Уровни: ${levels.map((level) => `${level.name} — ${size(level)}`).join(", ")}`);

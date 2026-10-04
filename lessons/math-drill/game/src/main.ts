@@ -4,6 +4,7 @@
 // result of each level is kept in the browser as stars.
 // One engine serves several lessons: each lesson's drill.json picks the operation and the levels (build_scripts/build.mjs);
 // a mixed drill has several operations in one level, and in equations x stands for the first or the second number.
+// Numbers may be fractions: they are written the school way, numerator above the bar and denominator below.
 
 // The build puts the lesson title, settings and examples sorted into levels into data.js
 declare const GAME_DATA: {
@@ -17,11 +18,12 @@ declare const GAME_DATA: {
     name: string;
     hint: string;
     // One group per operation; an example is [a, b, c] for «a ○ b = c», plus 0 or 1 when x hides a or b
-    groups: { op: Op; examples: [number, number, number, (0 | 1)?][] }[];
+    groups: { op: Op; examples: [Raw, Raw, Raw, (0 | 1)?][] }[];
   }[];
 };
 
 type Op = "add" | "sub" | "mul" | "div";
+type Raw = number | string; // a number in data.js: 7 or "7/6"
 type Slot = "a" | "b" | "c"; // a ○ b = c
 
 const CHOICES = 4; // answer buttons: one right, the rest wrong
@@ -36,11 +38,11 @@ const PRAISE = ["Верно!", "Молодец!", "Здорово!", "Точно
 
 interface Example {
   op: Op;
-  a: number;
-  b: number;
-  c: number;
+  a: Num;
+  b: Num;
+  c: Num;
   hide: Slot; // the number to find: c in «3 + 4 = ?», a in «x + 4 = 7»
-  answer: number; // the hidden number
+  answer: Num; // the hidden number
 }
 
 const random = <T>(list: T[]): T => list[Math.floor(Math.random() * list.length)]!;
@@ -54,8 +56,43 @@ function shuffle<T>(list: T[]): T[] {
   return a;
 }
 
-/** Wrong answers that look plausible: close numbers and typical slips (the neighbour in the table, the other operation). */
-function wrongAnswers({ op, a, b, c, hide, answer }: Example): number[] {
+// ---------- Numbers and fractions ----------
+
+/** A reduced fraction n/d with d > 0; a whole number has d = 1. */
+interface Num {
+  n: number;
+  d: number;
+}
+
+const gcd = (x: number, y: number): number => (y ? gcd(y, x % y) : Math.abs(x));
+
+/** n/d reduced; d = 0 gives an invalid number that `valid` filters out. */
+function frac(n: number, d: number): Num {
+  const g = gcd(n, d) || 1;
+  return d < 0 ? { n: -n / g, d: -d / g } : { n: n / g, d: d / g };
+}
+
+const whole = (n: number): Num => ({ n, d: 1 });
+const parse = (raw: Raw): Num => (typeof raw === "number" ? whole(raw) : frac(Number(raw.split("/")[0]), Number(raw.split("/")[1])));
+const same = (x: Num, y: Num) => x.n === y.n && x.d === y.d;
+const value = (x: Num) => x.n / x.d;
+const show = (x: Num) => (x.d === 1 ? String(x.n) : `${x.n}/${x.d}`);
+const sum = (x: Num, y: Num) => frac(x.n * y.d + y.n * x.d, x.d * y.d);
+const diff = (x: Num, y: Num) => frac(x.n * y.d - y.n * x.d, x.d * y.d);
+const product = (x: Num, y: Num) => frac(x.n * y.n, x.d * y.d);
+const quotient = (x: Num, y: Num) => frac(x.n * y.d, x.d * y.n);
+
+// ---------- Wrong answers ----------
+
+/** Wrong answers that look plausible: close numbers and typical slips. */
+function wrongAnswers(e: Example): Num[] {
+  return [e.a, e.b, e.c].every((x) => x.d === 1) ? wholeWrongAnswers(e).map(whole) : fractionWrongAnswers(e);
+}
+
+/** Whole numbers: close ones, the neighbour in the table, the other operation. */
+function wholeWrongAnswers(e: Example): number[] {
+  const { op, hide } = e;
+  const [a, b, c, answer] = [e.a.n, e.b.n, e.c.n, e.answer.n];
   const near = [1, 2, 3].flatMap((d) => [answer - d, answer + d]);
   const other = hide === "a" ? b : a; // the visible number next to x
   const slips =
@@ -80,6 +117,29 @@ function wrongAnswers({ op, a, b, c, hide, answer }: Example): number[] {
   while (picked.length < need) {
     const n = Math.floor(Math.random() * (max + 1));
     if (n !== answer && !picked.includes(n)) picked.push(n);
+  }
+  return picked;
+}
+
+/** Fractions: the classic mistakes — numerators and denominators added separately, the wrong fraction flipped… */
+function fractionWrongAnswers({ op, a, b, c, hide, answer }: Example): Num[] {
+  const other = hide === "a" ? b : a; // the visible number next to x
+  const slips =
+    // Equations: a visible number copied, or the inverse done with the wrong operation
+    hide !== "c" ? [c, other, sum(c, other), diff(c, other), product(c, other), quotient(c, other)] :
+    op === "add" ? [frac(a.n + b.n, a.d + b.d), frac(a.n + b.n, a.d * b.d), frac(a.n + b.n, Math.max(a.d, b.d))] :
+    op === "sub" ? [frac(a.n - b.n, a.d - b.d), frac(a.n - b.n, a.d * b.d), sum(a, b)] :
+    op === "mul" ? [frac(a.n * b.n, a.d + b.d), quotient(a, b), frac(a.n + b.n, a.d * b.d)] :
+    [product(a, b), quotient(b, a)];
+  const near = [frac(answer.n + 1, answer.d), frac(answer.n - 1, answer.d), frac(answer.n, answer.d + 1), frac(answer.n, answer.d - 1)];
+  // Positive, not the answer, and no bigger than the numbers the drill has
+  const valid = (x: Num) => x.d > 0 && x.n > 0 && x.n <= maxPart && x.d <= maxPart && !same(x, answer);
+  const unique = new Map([...slips, ...near].filter(valid).map((x) => [show(x), x]));
+  const picked = shuffle([...unique.values()]).slice(0, CHOICES - 1);
+  // Too few — fill up with answers of other examples
+  for (let tries = 0; picked.length < CHOICES - 1 && tries < 200; tries++) {
+    const x = random(answerPool);
+    if (!same(x, answer) && !picked.some((p) => same(p, x))) picked.push(x);
   }
   return picked;
 }
@@ -126,14 +186,17 @@ let levels: Example[][][] = []; // level → operation → examples
 let level = 0;
 let queue: Example[] = []; // examples left in this round
 let maxAnswer = 0;
+let maxPart = 0; // the largest numerator or denominator in the drill — wrong fractions stay within it
+let answerPool: Num[] = []; // every distinct answer, a fallback for wrong ones
+let tall = false; // the drill has fractions: the paper gets a row for the denominators
 const boxWidth: Record<Slot, number> = { a: 1, b: 1, c: 1 }; // cells for the box of a hidden number
 const maxAnswers: Partial<Record<Op, number>> = {}; // the largest answer of each operation
 let cols = 0; // notebook cells across the paper
 
 let phase: "start" | "ask" | "show" | "done" = "start";
-let example: Example = { op: "add", a: 0, b: 0, c: 0, hide: "c", answer: 0 };
-let options: number[] = [];
-let picked: number | null = null; // the chosen answer; null after a timeout
+let example: Example = { op: "add", a: whole(0), b: whole(0), c: whole(0), hide: "c", answer: whole(0) };
+let options: Num[] = [];
+let picked: Num | null = null; // the chosen answer; null after a timeout
 let asked = 0; // examples shown in this round
 let right = 0;
 let wrong = 0;
@@ -146,6 +209,7 @@ let pending = 0; // timeout that brings the next example
 
 const levelSize = (i: number) => levels[i]!.reduce((n, group) => n + group.length, 0);
 const roundSize = () => Math.min(GAME_DATA.count ?? Infinity, levelSize(level));
+const isRight = () => picked !== null && same(picked, example.answer);
 const elapsed = () => performance.now() - shownAt;
 const average = () => (times.length ? times.reduce((s, t) => s + t, 0) / times.length : null);
 const formatSeconds = (s: number) => `${s.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} с`;
@@ -204,7 +268,7 @@ function nextExample() {
   const next = queue.pop();
   if (!next) return finishRound();
   example = next;
-  options = [example.answer, ...wrongAnswers(example)].sort((x, y) => x - y);
+  options = [example.answer, ...wrongAnswers(example)].sort((x, y) => value(x) - value(y));
   picked = null;
   asked++;
   phase = "ask";
@@ -222,10 +286,11 @@ function tick() {
   else frame = requestAnimationFrame(tick);
 }
 
-function choose(value: number | null) {
+function choose(answer: Num | null) {
   if (phase !== "ask") return;
   cancelAnimationFrame(frame);
-  const ok = value === example.answer;
+  picked = answer;
+  const ok = isRight();
   if (ok) {
     right++;
     times.push(elapsed() / 1000);
@@ -233,7 +298,6 @@ function choose(value: number | null) {
   } else {
     wrong++;
   }
-  picked = value;
   phase = "show";
   chime(ok);
   render();
@@ -365,16 +429,37 @@ function renderLevels() {
   );
 }
 
-function cell(text: string, col: number, span = 1, cls = "") {
-  const node = el("span", `cell ${cls}`.trim(), text);
+/** A number as it is written: whole numbers as text, fractions stacked — numerator, bar, denominator. */
+function numberNode(x: Num): HTMLElement {
+  if (x.d === 1) return el("span", "", String(x.n));
+  const node = el("span", "frac");
+  node.append(el("span", "", String(x.n)), el("span", "", String(x.d)));
+  return node;
+}
+
+/** Cells taken by a number: its longest line of digits. */
+const width = (x: Num) => Math.max(digits(x.n), x.d === 1 ? 0 : digits(x.d));
+
+/** A cell of the paper: one row, or two in a drill with fractions — signs then sit on the grid line, like the bar. */
+function cell(content: string | HTMLElement, col: number, span = 1, cls = "") {
+  const node = el("span", `cell ${cls}`.trim());
+  node.append(content);
   node.style.gridColumn = `${col} / span ${span}`;
+  node.style.gridRow = tall ? "2 / span 2" : "2";
   return node;
 }
 
 /** The parts of «a ○ b = c» and the cells each one takes: the hidden number gets a box as wide as its widest value. */
-function layout(e: Example): { text: string; slot: Slot | null; span: number }[] {
-  const parts: [string, Slot | null][] = [[String(e.a), "a"], [SIGNS[e.op], null], [String(e.b), "b"], ["=", null], [String(e.c), "c"]];
-  return parts.map(([text, slot]) => ({ text, slot, span: slot && slot === e.hide ? boxWidth[slot] : text.length }));
+function layout(e: Example): { num: Num | null; text: string; slot: Slot | null; span: number }[] {
+  const parts: [Num | null, string, Slot | null][] = [
+    [e.a, "", "a"], [null, SIGNS[e.op], null], [e.b, "", "b"], [null, "=", null], [e.c, "", "c"],
+  ];
+  return parts.map(([num, text, slot]) => ({
+    num,
+    text,
+    slot,
+    span: slot && slot === e.hide ? boxWidth[slot] : num ? width(num) : 1,
+  }));
 }
 
 /**
@@ -386,21 +471,26 @@ function renderPaper() {
   const parts = layout(example);
   let col = cols - parts.reduce((n, p) => n + p.span, 0); // one empty cell of margin on the right
   const shown = phase === "show" || phase === "done";
-  const result = picked === example.answer ? "ok" : "bad";
+  const result = isRight() ? "ok" : "bad";
   paper.replaceChildren(
-    ...parts.map(({ text, slot, span }) => {
-      const hidden = slot === example.hide;
-      // The box shows x while an equation waits for the answer, then the answer itself
-      const x = phase === "ask" && slot !== "c";
-      const node = hidden
-        ? cell(shown ? text : x ? "x" : "", col, span, `answer ${shown ? result : x ? "unknown" : ""}`)
-        : cell(phase === "start" ? "" : text, col, span);
+    ...parts.map(({ num, text, slot, span }) => {
+      const blank = phase === "start";
+      let node: HTMLElement;
+      if (slot && slot === example.hide) {
+        // The box shows x while an equation waits for the answer, then the answer itself
+        const x = phase === "ask" && slot !== "c";
+        node = cell(shown ? numberNode(num!) : x ? "x" : "", col, span, `answer ${shown ? result : x ? "unknown" : ""}`);
+      } else {
+        node = cell(blank ? "" : num ? numberNode(num) : text, col, span);
+      }
       col += span;
       return node;
     }),
   );
-  const said = parts.map(({ text, slot }) => (slot === example.hide ? (slot === "c" ? "" : "икс") : text));
-  paper.setAttribute("aria-label", phase === "start" ? "" : said.join(" ").replace("=", "равно"));
+  const said = parts.map(({ num, text, slot }) =>
+    slot === example.hide ? (slot === "c" ? "" : "икс") : num ? show(num) : text === "=" ? "равно" : text,
+  );
+  paper.setAttribute("aria-label", phase === "start" ? "" : said.join(" "));
 }
 
 function renderTimer(left: number) {
@@ -418,11 +508,13 @@ function renderOptions() {
   }
   $("options").replaceChildren(
     ...options.map((n) => {
-      const btn = el("button", "option", String(n));
+      const btn = el("button", "option");
+      btn.append(numberNode(n));
+      btn.setAttribute("aria-label", show(n));
       btn.disabled = phase !== "ask";
       if (phase !== "ask") {
-        if (n === example.answer) btn.classList.add("ok");
-        else if (n === picked) btn.classList.add("bad");
+        if (same(n, example.answer)) btn.classList.add("ok");
+        else if (picked && same(n, picked)) btn.classList.add("bad");
         else btn.classList.add("dim");
       }
       btn.onclick = () => choose(n);
@@ -441,16 +533,16 @@ function renderScore() {
 
 function renderMessage() {
   const msg = $("message");
-  const { op, a, b, c, answer } = example;
-  const full = `${a} ${SIGNS[op]} ${b} = ${c}`;
+  const { op, a, b, c } = example;
+  const full = `${show(a)} ${SIGNS[op]} ${show(b)} = ${show(c)}`;
   const n = roundSize();
   const s = GAME_DATA.seconds;
-  msg.className = phase === "start" ? "info" : picked === answer ? "ok" : "bad";
+  msg.className = phase === "start" ? "info" : isRight() ? "ok" : "bad";
   msg.textContent =
     phase === "start" ? `${GAME_DATA.levels[level]!.hint}: ${n} ${plural(n, ["пример", "примера", "примеров"])}, ` +
       `на каждый — ${s} ${plural(s, ["секунда", "секунды", "секунд"])}` :
     phase === "ask" ? "" :
-    picked === answer ? random(PRAISE) :
+    isRight() ? random(PRAISE) :
     picked === null ? `⌛ Время вышло: ${full}` :
     `Запомни: ${full}`;
 }
@@ -474,23 +566,31 @@ function main() {
   document.body.dataset.op = GAME_DATA.op;
   levels = GAME_DATA.levels.map((lvl) =>
     lvl.groups.map(({ op, examples }) =>
-      examples.map(([a, b, c, h]) => {
+      examples.map(([ra, rb, rc, h]) => {
+        const [a, b, c] = [parse(ra), parse(rb), parse(rc)];
         const hide: Slot = h === 0 ? "a" : h === 1 ? "b" : "c";
         return { op, a, b, c, hide, answer: hide === "a" ? a : hide === "b" ? b : c };
       }),
     ),
   );
   const all = levels.flat(2);
-  maxAnswer = Math.max(...all.map((e) => e.answer));
+  const numbers = all.flatMap((e) => [e.a, e.b, e.c]);
+  tall = numbers.some((x) => x.d !== 1);
+  maxPart = Math.max(...numbers.map((x) => Math.max(x.n, x.d)));
+  answerPool = [...new Map(all.map((e) => [show(e.answer), e.answer])).values()];
+  maxAnswer = Math.max(...all.map((e) => value(e.answer)));
   for (const e of all) {
-    maxAnswers[e.op] = Math.max(maxAnswers[e.op] ?? 0, e.answer);
-    boxWidth[e.hide] = Math.max(boxWidth[e.hide], digits(e.answer));
+    maxAnswers[e.op] = Math.max(maxAnswers[e.op] ?? 0, value(e.answer));
+    boxWidth[e.hide] = Math.max(boxWidth[e.hide], width(e.answer));
   }
   // The widest example + a margin cell on each side
   cols = Math.max(...all.map((e) => layout(e).reduce((n, p) => n + p.span, 0))) + 2;
   // Before the first round the paper shows just the box, where it will be
-  example = { ...all[0]!, hide: all.some((e) => e.hide !== "c") ? "a" : "c" };
+  const first = all[0]!;
+  const hide: Slot = all.some((e) => e.hide !== "c") ? "a" : "c";
+  example = { ...first, hide, answer: first[hide] };
   document.body.style.setProperty("--cols", String(cols)); // sizes the paper and the timer under it
+  document.body.style.setProperty("--rows", tall ? "4" : "3");
 
   $("overlay-again").onclick = startRound;
   // A tap outside the results card closes it, back to the level's start

@@ -128,7 +128,7 @@ main {
 .paper {
   display: grid;
   grid-template-columns: repeat(var(--cols, 8), var(--cell));
-  grid-template-rows: repeat(3, var(--cell));
+  grid-template-rows: repeat(var(--rows, 3), var(--cell)); /* 4 with fractions: numerators and denominators */
   background:
     linear-gradient(to right, var(--line) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
     linear-gradient(to bottom, var(--line) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
@@ -139,7 +139,6 @@ main {
 }
 
 .cell {
-  grid-row: 2;
   display: grid;
   place-items: center;
   font-size: calc(var(--cell) * 0.82);
@@ -153,6 +152,24 @@ main {
   border-radius: calc(var(--cell) * 0.18);
   background: color-mix(in srgb, var(--accent-soft) 60%, transparent);
 }
+/* A fraction: numerator, bar, denominator. On the paper each takes a row and the bar lies on the grid line */
+.frac {
+  display: inline-grid;
+  grid-template-rows: auto auto;
+  justify-items: center;
+  line-height: 1.05;
+}
+.frac > span + span { border-top: 0.09em solid currentColor; padding-top: 0.04em; }
+.paper .frac {
+  width: 100%;
+  height: 100%;
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
+  font-size: 0.86em;
+}
+.paper .frac > span { width: 100%; display: grid; place-items: center; height: 100%; }
+.paper .frac > span + span { padding-top: 0; border-top-width: 3px; }
+
 .answer.unknown { color: var(--accent-dark); font-style: italic; }
 .answer.ok { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); animation: pop 0.3s ease-out; }
 .answer.bad { border-color: var(--bad); background: var(--bad-bg); animation: pop 0.3s ease-out; }
@@ -204,6 +221,7 @@ main {
 .option:hover:not(:disabled) { transform: translateY(-3px); }
 .option:active:not(:disabled) { transform: translateY(5px); box-shadow: 0 1px 0 var(--accent); }
 .option:disabled { color: var(--ink); }
+.option .frac { font-size: 0.68em; }
 .option.ok { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); box-shadow: 0 6px 0 var(--ok); }
 .option.bad { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); box-shadow: 0 6px 0 var(--bad); }
 .option.dim { opacity: 0.35; }

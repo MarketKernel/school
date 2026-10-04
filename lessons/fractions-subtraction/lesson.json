@@ -1,0 +1,9 @@
+{
+  "title": "Вычитание дробей",
+  "description": "Вычитаем дроби: 2/3 − 1/2, 1 − 1/3… 2 уровня, на каждый пример — 10 секунд.",
+  "subject": "Дроби",
+  "icon": "➖",
+  "order": 31,
+  "build": "(cd ../math-drill/game && npm ci) && node ../math-drill/game/build_scripts/build.mjs .",
+  "publish": "build"
+}
