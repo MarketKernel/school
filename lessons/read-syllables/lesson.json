@@ -4,6 +4,7 @@
   "subject": "Чтение",
   "icon": "🐷",
   "order": 10,
-  "build": "cd game && npm ci && npm run build",
-  "publish": "game/build"
+  "uses": ["russian"],
+  "build": "(cd ../read-game/game && npm ci) && node ../read-game/game/build_scripts/build.mjs .",
+  "publish": "build"
 }

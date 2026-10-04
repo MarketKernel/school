@@ -8,124 +8,45 @@
 | 🪵 Домик из веток | из 4 карточек |
 | 🧱 Каменный дом | из 5 карточек и больше |
 
-Слова, слоги, звуки и картинки взяты из одного текста сказки ([data/text1.txt](data/text1.txt)).
+Слова и картинки взяты из одного текста сказки ([data/text1.txt](data/text1.txt)).
 
-## Запустить игру
-
-```bash
-cd game
-npm install
-npm start          # собрать и открыть build/index.html
-npm run serve      # или собрать и открыть на http://localhost:8000
-```
-
-Сборка ([game/build_scripts/build.mjs](game/build_scripts/build.mjs)) кладёт в `game/build/` страницу, код, звуки из `audio/`, картинки из `images/` и слова из `data/words.txt`. Собранная игра открывается и двойным кликом, без сервера.
+Урок работает на общем движке [read-game](../read-game) — там описано, как устроена игра. Звуки букв и слогов — общие для всех уроков чтения, они лежат в [lessons/russian](../russian).
 
 ## Что где лежит
 
 | Файл / папка | Что это |
 |---|---|
-| `game/` | сама игра: `src/main.ts`, `index.html`, `style.css`, сборка — `build_scripts/build.mjs` |
-| `audio/` | **готовые звуки**: `letters/`, `soft/`, `syllables/` и списки `*.json` |
-| `audio/recorded.json` | звуки, записанные своим голосом, — `speak.py --force` их не трогает |
-| `images/`, `images.json` | **готовые картинки** к словам |
+| `lesson.json` | название, иконка, раздел на главной и команда сборки |
+| `game.json` | домики, тексты окон, конфетти и стиль картинок — поля описаны в [read-game/README.md](../read-game/README.md) |
 | `data/text1.txt` | сказка — источник всех слов |
 | `data/words.txt` | слова сказки по частоте |
 | `data/words_split.txt` | слова, разбитые на слоги: `поросенок → по-ро-се-но-к` |
-| `data/syllables.txt` | слоги по частоте — их озвучивает `speak.py` |
 | `data/pictures.tsv` | к каким словам рисовать картинку и что на ней |
-| `tools/words.py`, `tools/syllables.py` | разбор текста на слова и слоги |
-| `tools/speak.py` | озвучка слогов и букв (ElevenLabs или OpenAI) |
-| `tools/draw.py` | картинки к словам (OpenAI Images) |
-| `tools/record_server.py`, `record.html`, `myvoice.html` | запись звуков своим голосом |
-| `tools/listen.html`, `pictures.html`, `compare.html` | прослушать и проверить звуки и картинки |
+| `images/`, `images.json` | **готовые картинки** к словам |
 
-Скрипты из `tools/` сами находят `data/`, `audio/` и `images/` — запускать их можно из любой папки. Ниже команды даны из папки урока.
+## Собрать и посмотреть
+
+```bash
+(cd ../read-game/game && npm install)               # один раз — TypeScript
+node ../read-game/game/build_scripts/build.mjs .    # → build/
+open build/index.html                               # открывается и двойным кликом, без сервера
+```
 
 ## Как сделать всё заново или для другого текста
 
-Все шаги идут по цепочке; каждый скрипт пропускает то, что уже готово, и пишет, что делать дальше. Подробности — в начале каждого скрипта (`python3 tools/speak.py --help`).
-
-### 0. Ключи и инструменты
-
-- Ключи — в файле `.env` **в корне репозитория** (пример — [.env.example](../../.env.example)). В git он не попадает.
-  - `ELEVENLABS_API_KEY` — озвучка. Голос Olga Orlova взят из Voice Library, а такие голоса через API доступны только на платном тарифе (хватает Starter).
-  - `OPENAI_API_KEY` — картинки (и озвучка, если выбрать `--provider openai`).
-- `brew install lame` — выравнивание громкости и обрезка тишины в звуках. Без него файлы останутся как пришли из сервиса.
-- `draw.py` уменьшает картинки через `sips` — он есть только в macOS.
-- Python 3.9+ и Node.js — без дополнительных пакетов.
-
-### 1. Слова и слоги
+Команды даны из папки урока.
 
 ```bash
-python3 tools/words.py data/text1.txt -o data/words.txt   # слова по частоте
-python3 tools/syllables.py                                # → data/syllables.txt и data/words_split.txt
+python3 ../read-game/tools/words.py data/text1.txt -o data/words.txt   # слова по частоте
+python3 ../russian/tools/syllables.py       # → data/words_split.txt и общий список слогов
+python3 ../russian/tools/speak.py --dry-run # каких звуков не хватает
+python3 ../russian/tools/speak.py           # озвучить только недостающие
+python3 ../read-game/tools/draw.py read-syllables --limit 3   # первые 3 картинки — проверить стиль
+python3 ../read-game/tools/draw.py read-syllables             # нарисовать всё, чего ещё нет
 ```
 
 Слог здесь — пара «согласная + гласная» (ма, ви, де). Остальное (одиночные гласные, согласные без гласной) в игре показывается отдельными буквами.
 
-### 2. Звуки
+> ⚠️ **Не перегенерируйте звуки целиком без нужды.** Каждый звук подбирали на слух, многие записаны своим голосом (`../russian/audio/recorded.json`). Подробно про озвучку, свой голос и проверку на слух — в [lessons/russian/README.md](../russian/README.md).
 
-```bash
-python3 tools/speak.py --dry-run           # что будет озвучено — без запросов
-python3 tools/speak.py                     # озвучить всё, чего ещё нет
-python3 tools/speak.py --redo сё,шо,ж      # переозвучить отдельные звуки
-python3 tools/speak.py --normalize         # только громкость и тишина у готовых файлов
-```
-
-Результат — `audio/syllables/`, `audio/letters/`, `audio/soft/` и списки `audio/*.json`.
-
-> ⚠️ **Не перегенерируйте звуки целиком без нужды.** Каждый звук подбирали на слух, многие записаны своим голосом. Новые слоги — просто `python3 tools/speak.py`: он озвучит только недостающие.
-
-Что выбрано и почему:
-
-- **Голос** — Olga Orlova (`d60rsXo2p0OwikDR5bS7`) из ElevenLabs Voice Library, модель **`eleven_flash_v2_5`**. Multilingual v2 на коротком тексте игнорирует `language_code` и читает по-английски («С.» → «Си»); Flash v2.5 держит русский.
-- **Буквы читаются как звуки**, а не названия: к согласной дописывается «ъ» — «Бъ.», а не «бэ».
-- Для букв **с, й, р, л, ё, э** и мягких **ть, ль, сь, нь, рь** текст и модель подобраны вручную — см. `ELEVENLABS_LETTER_OVERRIDES` и `ELEVENLABS_SOFT_OVERRIDES` в `tools/speak.py`.
-- **Своим голосом** записаны все 33 буквы, все 15 мягких согласных и 23 слога (же, ле, ре, ве, пе, се, бе, ше, ви, ме, ти, де, ди, ке, зе, си, жу, лы, сё, ща, ще, щи, щё). Они отмечены в `audio/recorded.json`: `speak.py --force` их пропускает, переозвучить можно только явно через `--redo`.
-
-### 3. Свой голос
-
-```bash
-python3 tools/record_server.py       # http://localhost:8000/tools/myvoice.html
-```
-
-- **myvoice.html** — записать любой звук своим голосом. Записи ложатся в черновик `audio/My/` (копия рабочего набора), кнопка «Поставить в игру» переносит его в `audio/` и пересобирает игру.
-- **record.html** — записать дубль и, по желанию, перевести его в голос Olga (ElevenLabs Speech-to-Speech). Дубли копятся в `compare/recorded/`, кнопка «Поставить» кладёт выбранный в `audio/`.
-
-`audio/My/` и `compare/` — черновики, в git не попадают. В репозитории — только итоговый `audio/`.
-
-### 4. Картинки
-
-```bash
-python3 tools/draw.py --limit 3            # первые 3 — проверить стиль
-python3 tools/draw.py                      # нарисовать всё, чего ещё нет
-python3 tools/draw.py --redo домик,лето    # перерисовать отдельные
-```
-
-Что рисовать, задаёт `data/pictures.tsv` (уровень, слово, описание); общий стиль — `STYLE` в `tools/draw.py`. Модель по умолчанию — `gpt-image-1-mini`, качество `low`: картинки уменьшаются до 256 px, большего не нужно.
-
-### 5. Проверить на слух и на глаз
-
-Страницам нужен локальный сервер, запущенный из папки урока (они загружают списки через `fetch`):
-
-```bash
-python3 -m http.server 8000          # или python3 tools/record_server.py
-# страницы — http://localhost:8000/tools/listen.html и т. д.
-```
-
-- **listen.html** — все звуки. Shift+клик или долгое нажатие помечает плохие, внизу появляется команда `speak.py --redo …`.
-- **pictures.html** — все картинки. Клик помечает неудачные, внизу — команда `draw.py --redo …`.
-- **compare.html** — сравнить варианты одного звука и выбрать на слух. Варианты кладутся в `compare/` и перечисляются в `compare/variants.json`:
-
-  ```json
-  { "ть": [ { "n": 1, "text": "Ть.", "model": "Flash v2.5", "file": "variants/soft_t_1.mp3" } ] }
-  ```
-
-  Выбранный вариант переносится в `tools/speak.py` как override.
-
-### 6. Собрать игру
-
-```bash
-cd game && npm run build
-```
+Картинки рисует OpenAI Images по `data/pictures.tsv`; общий стиль — `pictureStyle` в `game.json`. Проверить и пометить неудачные — `read-game/tools/pictures.html?lesson=read-syllables`, см. [read-game/README.md](../read-game/README.md#картинки).

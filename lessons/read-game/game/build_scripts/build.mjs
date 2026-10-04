@@ -1,0 +1,124 @@
+// Builds one «Собери слово» reading lesson into <lesson>/build/: page, styles, code, words and pictures.
+// This engine is shared by read-syllables, read-potter…; each of them calls it from its lesson.json:
+//   (cd ../read-game/game && npm ci) && node ../read-game/game/build_scripts/build.mjs .
+//
+// The lesson folder holds:
+//   lesson.json     — title and icon are reused for the page; it lists "uses": ["russian"]
+//   game.json       — the lesson's story: levels, dialogs, confetti (see below)
+//   data/words.txt  — words to assemble: "count<TAB>word" (tools/words.py) or one word per line.
+//                     Without it the words are the ones in data/pictures.tsv. Same rule as read_words()
+//                     in russian/tools/syllables.py. Names keep their capital letter: «Гарри».
+//   data/pictures.tsv, images/, images.json — word pictures made by tools/draw.py; optional
+//   theme.css       — optional: colours and decorations on top of the engine's style.css
+//
+// game.json:
+//   levels       — exactly three, by tile count: 2–3, 4, 5 and more. Each is { name, icon, done }:
+//     name, icon — label and emoji of the level button
+//     done       — dialog when the level is complete: { icon?, title, text, button } («{n}» in text is the
+//                  number of words collected); the last level's dialog ends the game, its button starts over
+//   doneIcon     — emoji on the button of a complete level
+//   confetti     — emoji that rain down on a right answer
+//   pictureStyle — shared style prompt for tools/draw.py, so all the pictures look like one book
+//
+// Sounds of letters and syllables are not copied: they live in the shared folder lessons/russian, which the
+// root build publishes once as _site/russian/. data.js lists them, and the game loads them from ../russian/
+// on the site or ../../russian/ from a local <lesson>/build/.
+//
+// The result opens by double-clicking build/index.html or can be served from any static host.
+
+import { execSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const game = join(dirname(fileURLToPath(import.meta.url)), "..");
+const SOURCE = "russian"; // shared folder with the sounds, under lessons/ and on the site
+const sounds = join(game, "..", "..", SOURCE, "audio");
+if (!process.argv[2]) throw new Error("Укажите папку урока: node build_scripts/build.mjs ../../read-syllables");
+const lesson = resolve(process.argv[2]);
+const out = join(lesson, "build");
+const where = basename(lesson);
+
+const readJson = (file, fallback) => {
+  if (!existsSync(file)) {
+    if (fallback !== undefined) return fallback;
+    throw new Error(`Нет ${file}`);
+  }
+  return JSON.parse(readFileSync(file, "utf8"));
+};
+const fail = (text) => {
+  throw new Error(`${where}/game.json: ${text}`);
+};
+
+// ---------- Lesson settings ----------
+
+const meta = readJson(join(lesson, "lesson.json"));
+const story = readJson(join(lesson, "game.json"));
+if (!Array.isArray(story.levels) || story.levels.length !== 3) fail("нужно ровно три уровня levels: 2–3, 4 и 5+ карточек");
+for (const level of story.levels) {
+  const done = level.done ?? {};
+  if (!level.name || !level.icon || !done.title || !done.text || !done.button) {
+    fail(`у уровня ${JSON.stringify(level)} должны быть name, icon и done: { title, text, button }`);
+  }
+}
+if (!story.doneIcon) fail("нужен doneIcon — значок пройденного уровня");
+if (!Array.isArray(story.confetti) || !story.confetti.length) fail("нужен список значков confetti");
+
+// ---------- Words and pictures ----------
+
+const wordsFile = join(lesson, "data", "words.txt");
+const picturesFile = join(lesson, "data", "pictures.tsv");
+let words;
+if (existsSync(wordsFile)) {
+  words = readFileSync(wordsFile, "utf8").split("\n").map((line) => (line.split("\t").pop() ?? "").trim());
+} else if (existsSync(picturesFile)) {
+  words = readFileSync(picturesFile, "utf8").split("\n").slice(1).map((line) => (line.split("\t")[1] ?? "").trim());
+} else {
+  throw new Error(`Нет ни ${wordsFile}, ни ${picturesFile} — откуда брать слова?`);
+}
+words = [...new Set(words.filter(Boolean))];
+
+const images = readJson(join(lesson, "images.json"), {});
+
+// ---------- Sounds (lessons/russian) ----------
+
+for (const name of ["syllables.json", "letters.json"]) {
+  if (!existsSync(join(sounds, name))) throw new Error(`Нет lessons/${SOURCE}/audio/${name} — сначала озвучьте: python3 lessons/${SOURCE}/tools/speak.py`);
+}
+const soundList = (name) => readJson(join(sounds, name), {});
+
+// ---------- Output ----------
+
+rmSync(out, { recursive: true, force: true });
+mkdirSync(out);
+
+// TypeScript -> build/main.js
+execSync(`npx tsc --outDir "${out}"`, { cwd: game, stdio: "inherit" });
+
+// The page takes its title and favicon from lesson.json
+const escape = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const html = readFileSync(join(game, "index.html"), "utf8")
+  .replaceAll("__TITLE__", escape(meta.title))
+  .replaceAll("__ICON__", escape(meta.icon ?? "📖"));
+writeFileSync(join(out, "index.html"), html);
+cpSync(join(game, "style.css"), join(out, "style.css"));
+const theme = join(lesson, "theme.css");
+writeFileSync(join(out, "theme.css"), existsSync(theme) ? readFileSync(theme, "utf8") : "/* no theme.css in the lesson */\n");
+if (existsSync(join(lesson, "images"))) cpSync(join(lesson, "images"), join(out, "images"), { recursive: true });
+
+// Words and sound lists go into data.js so no fetch is needed (fetch fails when the file is opened directly)
+const data = {
+  source: SOURCE,
+  words,
+  syllables: soundList("syllables.json"),
+  letters: soundList("letters.json"),
+  soft: soundList("soft.json"), // soft consonants «ть», «ль»…, if already voiced
+  images,
+  story: { levels: story.levels, doneIcon: story.doneIcon, confetti: story.confetti },
+};
+writeFileSync(join(out, "data.js"), `const GAME_DATA = ${JSON.stringify(data)};\n`);
+
+console.log(`Готово: ${out}`);
+console.log(`Слов: ${words.length}, картинок: ${Object.keys(images).length}, ` +
+  `звуков из lessons/${SOURCE}: слогов ${Object.keys(data.syllables).length}, букв ${Object.keys(data.letters).length}, ` +
+  `мягких ${Object.keys(data.soft).length}`);

@@ -1,0 +1,10 @@
+{
+  "title": "Волшебные слова",
+  "description": "Читаем по слогам: собираем слова из «Гарри Поттера» и добираемся до Хогвартса.",
+  "subject": "Чтение",
+  "icon": "🪄",
+  "order": 11,
+  "uses": ["russian"],
+  "build": "(cd ../read-game/game && npm ci) && node ../read-game/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

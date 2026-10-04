@@ -1,0 +1,16 @@
+/* «Волшебные слова» — colours of a school of magic on top of the engine style (read-game/game/style.css) */
+
+:root {
+  --sky: #e6dfff;          /* lavender evening sky */
+  --main: #8d6be8;         /* main colour — magic purple: big speaker, main button */
+  --main-dark: #6b4cc7;
+  --main-soft: #ece5ff;
+  --tile-border: #d6c8ff;
+  --tile-shadow: #c3b0ff;
+  --level-1: #f2b31c;      /* level colours: Diagon Alley gold / train red / castle night blue */
+  --level-1-soft: #fff1c9;
+  --level-2: #e0605a;
+  --level-2-soft: #ffe3e1;
+  --level-3: #5b6fb5;
+  --level-3-soft: #e3e8f8;
+}

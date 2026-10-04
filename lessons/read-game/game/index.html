@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- The title and icon placeholders are filled from the lesson's lesson.json (build_scripts/build.mjs) -->
+<title>__TITLE__</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>__ICON__</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<!-- The lesson's colours and decorations (theme.css in the lesson folder), on top of the engine style -->
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+<header>
+  <nav id="levels" class="levels" aria-label="Уровни"></nav>
+</header>
+
+<main>
+  <section class="board">
+    <img id="picture" class="picture" alt="" hidden>
+    <div class="word-row">
+      <div id="word" class="word" aria-label="Слово"></div>
+      <button id="say-word" class="speaker big" title="Послушать слово по слогам" aria-label="Послушать слово"></button>
+    </div>
+  </section>
+
+  <p id="message" role="status"></p>
+
+  <section class="controls">
+    <button id="erase" class="btn" title="Стереть последний слог (Backspace)">⌫ Стереть</button>
+    <button id="check" class="btn primary" title="Проверить (Enter)">Проверить</button>
+    <button id="next" class="btn">Другое слово</button>
+  </section>
+
+  <section id="tiles" class="tiles" aria-label="Слоги и буквы"></section>
+</main>
+
+<div id="overlay" class="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
+    <div id="overlay-icon" class="card-icon"></div>
+    <h2 id="overlay-title"></h2>
+    <p id="overlay-text"></p>
+    <button id="overlay-btn" class="btn primary"></button>
+  </div>
+</div>
+
+<div id="confetti" class="confetti" aria-hidden="true"></div>
+<div class="grass" aria-hidden="true"></div>
+
+<!-- Classic scripts, not modules: this way the game also opens by double-click, without a server -->
+<script src="data.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

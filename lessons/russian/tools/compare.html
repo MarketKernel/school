@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<!-- The page lives in tools/, while the sounds and lists are in lessons/russian: all paths are relative to it -->
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Сравнение вариантов</title>
+<link rel="icon" href="data:,">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 16px; background: #fafafa; color: #222; }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 14px 0; }
+  .letter { font-size: 48px; font-weight: 800; width: 60px; text-align: center; }
+  button.v { font-size: 16px; padding: 10px 14px; border: 2px solid #ccc; border-radius: 12px; background: #fff; cursor: pointer; text-align: left; }
+  button.v b { font-size: 20px; }
+  button.v small { color: #777; display: block; }
+  button.v.playing { border-color: #3b82f6; }
+  button.v.chosen { border-color: #16a34a; background: #dcfce7; }
+  .hint { color: #666; }
+  pre { background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 8px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<p class="hint">Клик — послушать. Двойной клик — выбрать этот вариант (зелёный). Внизу — что выбрано.</p>
+<div id="rows"></div>
+<h3>Выбрано</h3>
+<pre id="chosen">— пока ничего —</pre>
+<script>
+const chosen = {};
+let current;
+
+function play(src, btn) {
+  current?.pause();
+  document.querySelectorAll(".playing").forEach(b => b.classList.remove("playing"));
+  current = new Audio(src);
+  btn.classList.add("playing");
+  current.onended = () => btn.classList.remove("playing");
+  current.play();
+}
+
+function choose(letter, v, btn) {
+  btn.parentElement.querySelectorAll(".chosen").forEach(b => b.classList.remove("chosen"));
+  btn.classList.add("chosen");
+  chosen[letter] = v;
+  document.getElementById("chosen").textContent = Object.entries(chosen)
+    .map(([l, v]) => `${l}: ${v.n} — «${v.text}», ${v.model}`).join("\n");
+}
+
+(async () => {
+  const variants = await (await fetch("compare/variants.json")).json();
+  const rows = document.getElementById("rows");
+  for (const [letter, list] of Object.entries(variants)) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<span class="letter">${letter}</span>`;
+    for (const v of list) {
+      const btn = document.createElement("button");
+      btn.className = "v";
+      btn.innerHTML = `<b>${v.n}</b> «${v.text}»<small>${v.model}</small>`;
+      btn.onclick = () => play(`compare/${v.file}`, btn);
+      btn.ondblclick = () => choose(letter, v, btn);
+      row.append(btn);
+    }
+    rows.append(row);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<!-- Serve lessons/ and open read-game/tools/pictures.html?lesson=<lesson folder>: all paths are relative to lessons/ -->
+<base href="../../">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Картинки к словам</title>
+<link rel="icon" href="data:,">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 16px; background: #fafafa; color: #222; }
+  h2 { margin: 24px 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  figure { margin: 0; background: #fff; border: 3px solid #e5e5e5; border-radius: 14px; padding: 8px;
+           text-align: center; cursor: pointer; }
+  figure.bad { border-color: #ef4444; background: #fee2e2; }
+  img { width: 100%; aspect-ratio: 1; object-fit: contain; display: block; border-radius: 8px; }
+  figcaption b { display: block; font-size: 20px; margin-top: 6px; }
+  figcaption small { color: #777; font-size: 12px; line-height: 1.3; display: block; }
+  .hint { color: #666; }
+  pre { background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 8px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<p class="hint">Урок: <b id="lesson"></b>. Клик по картинке — пометить как неудачную (красная). Внизу появится команда, чтобы перерисовать помеченные.
+  Описание «что нарисовать» можно поправить в <span id="tsv"></span> перед перерисовкой.</p>
+<div id="levels"></div>
+<h2>Перерисовать помеченные</h2>
+<pre id="redo">— пока ничего не помечено —</pre>
+
+<script>
+const lesson = new URLSearchParams(location.search).get("lesson") || "read-syllables";
+const bad = new Set();
+document.getElementById("lesson").textContent = lesson;
+document.getElementById("tsv").textContent = `lessons/${lesson}/data/pictures.tsv`;
+
+function toggle(word, fig) {
+  bad.has(word) ? bad.delete(word) : bad.add(word);
+  fig.classList.toggle("bad");
+  document.getElementById("redo").textContent = bad.size
+    ? `python3 lessons/read-game/tools/draw.py ${lesson} --redo ${[...bad].join(",")}` : "— пока ничего не помечено —";
+}
+
+(async () => {
+  const [tsv, files, game] = await Promise.all([
+    fetch(`${lesson}/data/pictures.tsv`).then(r => r.text()),
+    fetch(`${lesson}/images.json`).then(r => (r.ok ? r.json() : {})),
+    fetch(`${lesson}/game.json`).then(r => r.json()),
+  ]);
+  const rows = tsv.trim().split("\n").slice(1).map(l => l.split("\t"));
+  for (const [i, { icon, name }] of game.levels.entries()) {
+    const level = String(i + 1);
+    const h = document.createElement("h2");
+    h.textContent = `${icon} ${name}`;
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    for (const [lvl, word, what] of rows.filter(r => r[0] === level)) {
+      const fig = document.createElement("figure");
+      const src = files[word] ? `${lesson}/${files[word]}?t=${Date.now()}` : "";
+      fig.innerHTML = `<img src="${src}" alt=""><figcaption><b>${word}</b><small>${what}</small></figcaption>`;
+      fig.onclick = () => toggle(word, fig);
+      grid.append(fig);
+    }
+    document.getElementById("levels").append(h, grid);
+  }
+})();
+</script>
+</body>
+</html>
