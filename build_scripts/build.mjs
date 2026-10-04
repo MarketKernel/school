@@ -11,11 +11,15 @@
 //   publish     — which lesson folder to publish (after the build); defaults to the lesson folder itself
 //   hidden      — true to keep the lesson off the home page (draft)
 //
+// The site is also an installable app (PWA): every page gets the manifest, the icons and the
+// service worker (site/sw.js) linked in, so a lesson needs nothing of its own for that.
+//
 // Usage:
 //   node build_scripts/build.mjs              # build everything
 //   node build_scripts/build.mjs --no-build   # skip lesson builds, use what is already built
 
 import { execSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,6 +27,60 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const out = join(root, "_site");
 const skipBuild = process.argv.includes("--no-build");
+
+// ---------- App (PWA) ----------
+
+// Links the manifest, icons and service worker into a page; `up` leads from the page to the site root
+const appHead = (up) => `
+<link rel="manifest" href="${up}manifest.webmanifest">
+<meta name="theme-color" content="#d7f0ff">
+<link rel="apple-touch-icon" href="${up}apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Школа">
+<script>
+  if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("${up}sw.js").catch(() => {}));
+</script>
+`;
+
+// The installed app has no browser back button, so lesson pages get a way home; hidden in a browser tab.
+// It sits in the bottom-left corner: leave ~70px free at the bottom of a lesson page (read-syllables keeps it for the grass).
+const homeButton = `
+<a class="app-home" href="../" title="Все уроки" aria-label="Все уроки">🏠</a>
+<style>
+  .app-home { display: none; }
+  @media (display-mode: standalone) {
+    .app-home {
+      position: fixed;
+      z-index: 5;
+      bottom: calc(14px + env(safe-area-inset-bottom));
+      left: calc(12px + env(safe-area-inset-left));
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid #eadfcd;
+      box-shadow: 0 3px 0 #eadfcd;
+      font-size: 24px;
+      line-height: 1;
+      text-decoration: none;
+    }
+    .app-home:active { transform: translateY(2px); box-shadow: 0 1px 0 #eadfcd; }
+  }
+</style>
+`;
+
+const injectApp = (file, up, extraBody = "") => {
+  const html = readFileSync(file, "utf8");
+  if (!html.includes("</head>") || !html.includes("</body>")) throw new Error(`В ${file} нет </head> или </body>`);
+  writeFileSync(file, html.replace("</head>", `${appHead(up)}</head>`).replace("</body>", `${extraBody}</body>`));
+};
+
+// Every published file with a hash of its contents, for the service worker's cache
+const listFiles = (dir, prefix = "") =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+    d.isDirectory() ? listFiles(join(dir, d.name), `${prefix}${d.name}/`) : [`${prefix}${d.name}`],
+  );
 
 const escape = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -48,6 +106,7 @@ for (const lesson of lessons) {
     recursive: true,
     filter: (src) => !/(^|\/)(\.DS_Store|\.env|node_modules)$/.test(src),
   });
+  injectApp(join(out, lesson.slug, "index.html"), "../", homeButton);
 }
 
 // ---------- Home page ----------
@@ -78,9 +137,20 @@ const sections = [...subjects]
 const template = readFileSync(join(root, "site", "index.html"), "utf8");
 if (!template.includes("<!-- LESSONS -->")) throw new Error("В site/index.html нет метки <!-- LESSONS -->");
 writeFileSync(join(out, "index.html"), template.replace("<!-- LESSONS -->", sections));
+injectApp(join(out, "index.html"), "");
 for (const file of readdirSync(join(root, "site"))) {
-  if (file !== "index.html" && file !== ".DS_Store") cpSync(join(root, "site", file), join(out, file), { recursive: true });
+  if (!["index.html", "sw.js", ".DS_Store"].includes(file)) cpSync(join(root, "site", file), join(out, file), { recursive: true });
 }
 
+// ---------- Service worker ----------
+
+const files = Object.fromEntries(
+  listFiles(out).map((path) => [path, createHash("sha256").update(readFileSync(join(out, path))).digest("hex").slice(0, 12)]),
+);
+const worker = readFileSync(join(root, "site", "sw.js"), "utf8");
+if (!worker.includes("/* FILES */ {}")) throw new Error("В site/sw.js нет метки /* FILES */ {}");
+writeFileSync(join(out, "sw.js"), worker.replace("/* FILES */ {}", () => JSON.stringify(files)));
+
 console.log(`\nГотово: ${out}`);
-console.log(`Уроков: ${lessons.length}, на главной: ${[...subjects.values()].flat().length}, разделов: ${subjects.size}`);
+console.log(`Уроков: ${lessons.length}, на главной: ${[...subjects.values()].flat().length}, разделов: ${subjects.size}, ` +
+  `файлов для офлайна: ${Object.keys(files).length}`);

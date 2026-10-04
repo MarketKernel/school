@@ -3,6 +3,6 @@
   "private": true,
   "scripts": {
     "build": "node build_scripts/build.mjs",
-    "serve": "node build_scripts/build.mjs && cd _site && python3 -m http.server 8000"
+    "serve": "node build_scripts/build.mjs && cd _site && python3 -m http.server 8090"
   }
 }

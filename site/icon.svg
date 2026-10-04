@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- App icon: a backpack on the site's sky-to-cream background.
+       Full-bleed background and everything important inside the central 80% circle,
+       so the same picture works as a "maskable" Android icon.
+       PNG versions: node build_scripts/icons.mjs -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d7f0ff"/>
+      <stop offset="1" stop-color="#fff8ec"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#sky)"/>
+  <!-- handle -->
+  <path d="M211 160 V132 a45 45 0 0 1 90 0 V160" fill="none" stroke="#e04f78" stroke-width="22" stroke-linecap="round"/>
+  <!-- body -->
+  <rect x="141" y="140" width="230" height="290" rx="70" fill="#ff7096"/>
+  <!-- flap with a straw-yellow buckle -->
+  <path d="M141 236 V210 a70 70 0 0 1 70 -70 h90 a70 70 0 0 1 70 70 v26 q-115 44 -230 0 Z" fill="#e04f78"/>
+  <rect x="234" y="232" width="44" height="40" rx="12" fill="#f2b31c"/>
+  <!-- front pocket with a zip -->
+  <rect x="179" y="300" width="154" height="102" rx="34" fill="#ffe1ea"/>
+  <path d="M203 330 H309" stroke="#ff7096" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="309" cy="330" r="10" fill="#f2b31c"/>
+</svg>
