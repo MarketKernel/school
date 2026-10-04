@@ -16,7 +16,8 @@
 //
 // game.json:
 //   mode         — "assemble" (default): build the word from tiles; "aloud": read the shown word aloud,
-//                  browser speech recognition checks it
+//                  browser speech recognition checks it. "aloud" shows no picture and plays no sound — the child
+//                  must read, not guess or repeat — so it loads nothing from shared folders and needs no "uses".
 //   words        — optional: shared folder with the words and pictures, e.g. "potter"
 //   levels       — exactly three, by tile count: 2–3, 4, 5 and more. Each is { name, icon, done }:
 //     name, icon — label and emoji of the level button
@@ -64,11 +65,16 @@ const story = readJson(join(lesson, "game.json"));
 const MODES = ["assemble", "aloud"];
 const mode = story.mode ?? "assemble";
 if (!MODES.includes(mode)) fail(`mode должен быть ${MODES.join(" или ")}, а не ${mode}`);
+// Pictures and sounds are only for "assemble"; "aloud" takes just the word list
+const media = mode === "assemble";
+const needUses = (folder, what) => {
+  if (!(meta.uses ?? []).includes(folder)) throw new Error(`${where}/lesson.json: добавьте "${folder}" в "uses" — оттуда ${what}`);
+};
 if (story.words !== undefined) {
   if (!existsSync(join(lesson, "..", story.words, "shared.json"))) fail(`words: нет общей папки lessons/${story.words} с shared.json`);
-  if (!(meta.uses ?? []).includes(story.words)) throw new Error(`${where}/lesson.json: добавьте "${story.words}" в "uses"`);
+  if (media) needUses(story.words, "картинки");
 }
-if (!(meta.uses ?? []).includes(SOURCE)) throw new Error(`${where}/lesson.json: добавьте "${SOURCE}" в "uses" — оттуда звуки`);
+if (media) needUses(SOURCE, "звуки");
 if (!Array.isArray(story.levels) || story.levels.length !== 3) fail("нужно ровно три уровня levels: 2–3, 4 и 5+ карточек");
 for (const level of story.levels) {
   const done = level.done ?? {};
@@ -94,14 +100,14 @@ if (existsSync(wordsFile)) {
 }
 words = [...new Set(words.filter(Boolean))];
 
-const images = readJson(join(wordsDir, "images.json"), {});
+const images = media ? readJson(join(wordsDir, "images.json"), {}) : {};
 
 // ---------- Sounds (lessons/russian) ----------
 
-for (const name of ["syllables.json", "letters.json"]) {
+for (const name of media ? ["syllables.json", "letters.json"] : []) {
   if (!existsSync(join(sounds, name))) throw new Error(`Нет lessons/${SOURCE}/audio/${name} — сначала озвучьте: python3 lessons/${SOURCE}/tools/speak.py`);
 }
-const soundList = (name) => readJson(join(sounds, name), {});
+const soundList = (name) => (media ? readJson(join(sounds, name), {}) : {});
 
 // ---------- Output ----------
 
@@ -123,13 +129,13 @@ cpSync(join(game, "style.css"), join(out, "style.css"));
 const theme = join(lesson, "theme.css");
 writeFileSync(join(out, "theme.css"), existsSync(theme) ? readFileSync(theme, "utf8") : "/* no theme.css in the lesson */\n");
 // The lesson's own pictures are copied; those of a shared word folder are loaded from it
-if (!story.words && existsSync(join(lesson, "images"))) cpSync(join(lesson, "images"), join(out, "images"), { recursive: true });
+if (media && !story.words && existsSync(join(lesson, "images"))) cpSync(join(lesson, "images"), join(out, "images"), { recursive: true });
 
 // Words and sound lists go into data.js so no fetch is needed (fetch fails when the file is opened directly)
 const data = {
   lesson: where,
   source: SOURCE,
-  imageSource: story.words ?? "",
+  imageSource: media ? story.words ?? "" : "",
   words,
   syllables: soundList("syllables.json"),
   letters: soundList("letters.json"),
@@ -140,7 +146,8 @@ const data = {
 writeFileSync(join(out, "data.js"), `const GAME_DATA = ${JSON.stringify(data)};\n`);
 
 console.log(`Готово: ${out}`);
-console.log(`Режим: ${mode}${story.words ? `, слова и картинки из lessons/${story.words}` : ""}`);
-console.log(`Слов: ${words.length}, картинок: ${Object.keys(images).length}, ` +
+console.log(`Режим: ${mode}${story.words ? `, слова${media ? " и картинки" : ""} из lessons/${story.words}` : ""}` +
+  (media ? "" : " (без картинок и звуков)"));
+console.log(`Слов: ${words.length}` + (media ? `, картинок: ${Object.keys(images).length}, ` +
   `звуков из lessons/${SOURCE}: слогов ${Object.keys(data.syllables).length}, букв ${Object.keys(data.letters).length}, ` +
-  `мягких ${Object.keys(data.soft).length}`);
+  `мягких ${Object.keys(data.soft).length}` : ""));

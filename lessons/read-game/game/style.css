@@ -292,14 +292,8 @@ main {
 }
 .score.bump { animation: pop 0.4s ease-out; }
 
-/* The speaker is only a hint here: the microphone is the main button */
-body[data-mode="aloud"] .speaker.big {
-  width: 64px;
-  height: 64px;
-  background: var(--main-soft);
-  color: var(--main-dark);
-  box-shadow: 0 4px 0 var(--tile-border);
-}
+/* No picture here, so the word doesn't need the picture's room */
+body[data-mode="aloud"] .board { min-height: 24vh; }
 
 /* The word is read, not assembled: each part is one plate «к · ры · са», so it isn't read letter by letter */
 body[data-mode="aloud"] .group {
@@ -400,7 +394,6 @@ body[data-mode="aloud"] .cell { width: auto; border: none; background: none; box
   .heard { font-size: 18px; }
   .mic { font-size: 24px; padding: 12px 32px; }
   .score { font-size: 18px; padding: 6px 12px; }
-  body[data-mode="aloud"] .speaker.big { width: 52px; height: 52px; }
   .tiles { gap: 9px; }
   .tile { border-radius: 16px; padding-right: 6px; }
   .tile-text { font-size: 34px; padding: 4px 2px 4px 12px; min-width: 52px; }

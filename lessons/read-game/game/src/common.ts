@@ -132,12 +132,6 @@ async function playParts(parts: string[]): Promise<void> {
   }
 }
 
-/** Stops whatever is playing (the microphone must not hear the speaker). */
-function stopSound() {
-  playToken++;
-  stopCurrent?.();
-}
-
 // ---------- Levels: names and dialogs come from the lesson (game.json) ----------
 
 // Difficulty is the number of tiles to assemble: «до-мик» is easier than «с-т-ра-ш-но», though both have two syllables

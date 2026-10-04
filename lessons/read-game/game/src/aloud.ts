@@ -1,5 +1,6 @@
 // «Собери слово» mode "aloud": the word is shown split into syllables, the child reads it aloud,
 // and browser speech recognition (Web Speech API, ru-RU) checks it. What was heard is shown under the cells.
+// No picture and no sound of the word: with them the child could guess or just repeat instead of reading.
 // Shared parts (words, split, sounds, levels, cells) are in common.ts; a namespace keeps this mode's names apart.
 
 namespace Aloud {
@@ -87,8 +88,6 @@ namespace Aloud {
   let heard = ""; // what the recognizer heard on the last attempt
   let lastError = ""; // recognizer error of the last attempt: no-speech, network…
   let micBlocked = false; // no permission or no microphone — only the manual button is left
-  let hinted = false; // the word was played to the child: reading it then earns no point
-  let pointGiven = false; // the last right answer earned a point
   let score = 0;
 
   const canSpeak = () => Recognizer !== null && !micBlocked;
@@ -97,10 +96,8 @@ namespace Aloud {
 
   function startRound() {
     stopListening();
-    stopSound();
     phase = "idle";
     heard = "";
-    hinted = false;
     lastError = lastError === "network" ? lastError : "";
   }
 
@@ -112,7 +109,6 @@ namespace Aloud {
 
   function startListening() {
     if (!Recognizer || micBlocked || phase === "ok") return;
-    stopSound(); // the mic must not hear the speaker
     stopListening();
 
     const rec = new Recognizer();
@@ -194,24 +190,13 @@ namespace Aloud {
     if (phase === "ok") return;
     stopListening();
     phase = "ok";
-    pointGiven = !hinted;
-    if (pointGiven) {
-      score++;
-      saveScore();
-      addProgress();
-      bump($("score"));
-    }
+    score++;
+    saveScore();
+    addProgress();
+    bump($("score"));
     chime(true);
     confetti();
     render();
-  }
-
-  /** 🔊: a hint — the word is read by syllables. Reading it right afterwards is praised but earns no point. */
-  function hint() {
-    stopListening();
-    if (phase !== "ok") hinted = true;
-    render();
-    playParts(parts);
   }
 
   function next() {
@@ -231,9 +216,7 @@ namespace Aloud {
       case "listening":
         return "Читай! 🎤";
       case "ok":
-        return pointGiven
-          ? random(["Правильно! +1", "Ура! Получилось! +1", "Отлично! +1", "Здорово! +1"])
-          : "Правильно! Следующее попробуй прочитать сам — без подсказки";
+        return random(["Правильно! +1", "Ура! Получилось! +1", "Отлично! +1", "Здорово! +1"]);
       case "miss":
         if (lastError === "network") return "Нет интернета — проверить не получится";
         if (micBlocked) return "Нет доступа к микрофону";
@@ -279,9 +262,6 @@ namespace Aloud {
 
   if (startGame({ newRound: startRound, render: renderMode, busy: () => false })) {
     score = loadScore();
-    $("say-word").innerHTML = SPEAKER_SVG;
-    $("say-word").title = "Подсказка: послушать слово по слогам (без очка)";
-    $("say-word").onclick = hint;
     $("speak").onclick = toggleListening;
     $("manual-ok").onclick = success;
     $("next").onclick = next;
