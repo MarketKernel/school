@@ -4,7 +4,7 @@
   "seconds": 10,
   "count": 20,
   "levels": [
-    {"name": "до 3", "hint": "Уравнения: знаменатели 2 и 3, целые до 3"},
-    {"name": "до 5", "hint": "Уравнения: знаменатели до 5, целые до 5"}
+    {"name": "до 3", "hint": "Уравнения: знаменатели 2 и 3, целые до 3", "take": {"fractions-addition": 3, "fractions-subtraction": 3}},
+    {"name": "до 5", "hint": "Уравнения: знаменатели до 5, целые до 5", "take": {"fractions-addition": 4, "fractions-subtraction": 4}}
   ]
 }

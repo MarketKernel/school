@@ -21,11 +21,13 @@
 // A fraction drill has "fractions": true instead of from/to, and every level has { name, hint, upTo } whatever the op.
 // Its numbers are proper fractions with a denominator up to upTo (1/2, 2/3, 3/5…) and whole numbers up to upTo; an
 // example has at least one fraction, its answer is reduced (2/4 → 1/2), and subtraction stays above zero. A level
-// takes examples whose numbers all fit in its upTo.
+// takes examples whose numbers all fit in its upTo. An optional `denominators` narrows a level further: "same" takes
+// only two fractions with one denominator (1/5 + 2/5), "different" everything else (1/2 + 1/3, 2 + 1/3).
 //
 // A mixed drill has `mix` instead of op/from/to: a list of other drill lessons (folder names). Its level N is
 // level N of each of them together, so its levels list only { name, hint }. With `count`, a round takes the
-// same number of examples from each of them.
+// same number of examples from each of them. A level may pick other levels of some of them with an optional `take`:
+// { "fractions-addition": 3 } — level 3 of fractions-addition (counted from 1); the rest still give level N.
 //
 // Examples are built from pairs x, y in [from, to]: add asks x + y, mul asks x × y, and sub and div are them read
 // backwards — (x + y) − y and (x × y) ÷ y (y ≠ 0) — so answers are never negative or fractional.
@@ -112,19 +114,25 @@ function fractionLevels(drill, fail) {
     if (!level.name || !level.hint || !isInt(level.upTo) || level.upTo < 2) {
       fail(`у уровня ${JSON.stringify(level)} должны быть name, hint и upTo от 2`);
     }
+    if (![undefined, "same", "different"].includes(level.denominators)) {
+      fail(`denominators уровня «${level.name}» — "same" или "different", а не ${level.denominators}`);
+    }
   }
   const top = Math.max(...drill.levels.map((level) => level.upTo));
   const numbers = [];
   for (let d = 2; d <= top; d++) for (let n = 1; n < d; n++) if (gcd(n, d) === 1) numbers.push({ n, d });
   for (let n = 1; n <= top; n++) numbers.push({ n, d: 1 });
   const size = (x) => Math.max(x.n, x.d); // 2/5 and 5 both need a level up to 5
+  const takes = (level, x, y) =>
+    Math.max(size(x), size(y)) <= level.upTo &&
+    (level.denominators === undefined || (level.denominators === "same") === (x.d === y.d)); // whole + whole never gets here
 
   const levels = drill.levels.map((level) => ({ name: level.name, hint: level.hint, examples: [] }));
   for (const x of numbers) {
     for (const y of numbers) {
       if (x.d === 1 && y.d === 1) continue; // whole numbers only — that's the integer drills
       if (drill.op === "sub" && x.n * y.d <= y.n * x.d) continue; // no zero or negative differences
-      const i = drill.levels.findIndex((level) => Math.max(size(x), size(y)) <= level.upTo);
+      const i = drill.levels.findIndex((level) => takes(level, x, y));
       if (i >= 0) levels[i].examples.push([raw(x), raw(y), raw(fractionOps[drill.op](x, y))]);
     }
   }
@@ -139,14 +147,20 @@ function mixLevels(drill) {
   if (!Array.isArray(drill.levels) || !drill.levels.every((level) => level.name && level.hint)) {
     throw new Error("drill.json: нужен список уровней levels, у каждого name и hint");
   }
-  const sources = drill.mix.map((name) => {
-    const levels = drillLevels(readJson(join(lesson, "..", name), "drill.json"), `${name}/drill.json`);
-    if (levels.length < drill.levels.length) {
-      throw new Error(`drill.json: в ${name} только ${levels.length} уровней, а здесь ${drill.levels.length}`);
-    }
-    return levels;
-  });
-  return drill.levels.map((level, i) => ({ name: level.name, hint: level.hint, groups: sources.flatMap((s) => s[i].groups) }));
+  const sources = drill.mix.map((name) => drillLevels(readJson(join(lesson, "..", name), "drill.json"), `${name}/drill.json`));
+  for (const name of new Set(drill.levels.flatMap((level) => Object.keys(level.take ?? {})))) {
+    if (!drill.mix.includes(name)) throw new Error(`drill.json: в take указан ${name}, а его нет в mix`);
+  }
+  return drill.levels.map((level, i) => ({
+    name: level.name,
+    hint: level.hint,
+    groups: sources.flatMap((levels, k) => {
+      const name = drill.mix[k];
+      const n = level.take?.[name] ?? i + 1; // counted from 1, like the level buttons
+      if (!levels[n - 1]) throw new Error(`drill.json: уровень «${level.name}» берёт уровень ${n} из ${name}, а там их ${levels.length}`);
+      return levels[n - 1].groups;
+    }),
+  }));
 }
 
 const meta = readJson(lesson, "lesson.json");
