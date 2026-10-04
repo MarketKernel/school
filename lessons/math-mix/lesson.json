@@ -1,0 +1,9 @@
+{
+  "title": "Всё вперемешку",
+  "description": "Сложение, вычитание, умножение и деление в одном раунде: 4 уровня, 20 примеров, на каждый — 5 секунд.",
+  "subject": "Математика",
+  "icon": "🎲",
+  "order": 24,
+  "build": "(cd ../math-drill/game && npm ci) && node ../math-drill/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

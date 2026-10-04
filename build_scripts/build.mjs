@@ -35,37 +35,49 @@ const appHead = (up) => `
 <link rel="manifest" href="${up}manifest.webmanifest">
 <meta name="theme-color" content="#d7f0ff">
 <link rel="apple-touch-icon" href="${up}apple-touch-icon.png">
-<meta name="apple-mobile-web-app-title" content="Школа">
+<meta name="apple-mobile-web-app-title" content="Весёлая школа">
 <script>
   if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("${up}sw.js").catch(() => {}));
 </script>
 `;
 
-// The installed app has no browser back button, so lesson pages get a way home; hidden in a browser tab.
+// Every lesson page gets a way back to the home page (the installed app has no browser back button at all).
 // It sits in the bottom-left corner: leave ~70px free at the bottom of a lesson page (read-syllables keeps it for the grass).
+// Wide screens show the label next to the house, phones only the house.
 const homeButton = `
-<a class="app-home" href="../" title="Все уроки" aria-label="Все уроки">🏠</a>
+<a class="home-button" href="../" title="Все уроки" aria-label="Все уроки"><span aria-hidden="true">🏠</span><span class="home-button-text">Все уроки</span></a>
 <style>
-  .app-home { display: none; }
-  @media (display-mode: standalone) {
-    .app-home {
-      position: fixed;
-      z-index: 5;
-      bottom: calc(14px + env(safe-area-inset-bottom));
-      left: calc(12px + env(safe-area-inset-left));
-      display: grid;
-      place-items: center;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: #fff;
-      border: 3px solid #eadfcd;
-      box-shadow: 0 3px 0 #eadfcd;
-      font-size: 24px;
-      line-height: 1;
-      text-decoration: none;
-    }
-    .app-home:active { transform: translateY(2px); box-shadow: 0 1px 0 #eadfcd; }
+  .home-button {
+    position: fixed;
+    z-index: 5;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    left: calc(12px + env(safe-area-inset-left));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 48px;
+    height: 48px;
+    padding: 0 16px 0 10px;
+    border-radius: 999px;
+    background: #fff;
+    border: 3px solid #eadfcd;
+    box-shadow: 0 3px 0 #eadfcd;
+    color: #3d2b2f;
+    font: 800 17px "Nunito", system-ui, sans-serif;
+    line-height: 1;
+    text-decoration: none;
+    transition: transform 0.1s;
+  }
+  .home-button span:first-child { font-size: 22px; }
+  .home-button:hover { transform: translateY(-2px); }
+  .home-button:active { transform: translateY(2px); box-shadow: 0 1px 0 #eadfcd; }
+  @media (max-width: 700px) {
+    .home-button { width: 48px; padding: 0; }
+    .home-button-text { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .home-button { transition: none; }
   }
 </style>
 `;

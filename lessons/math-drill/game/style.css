@@ -20,6 +20,8 @@
 body[data-op="sub"] { --accent: #4aa3df; --accent-dark: #2f86c0; --accent-soft: #dcefff; }
 body[data-op="mul"] { --accent: #f2a516; --accent-dark: #d18a00; --accent-soft: #fff1c9; }
 body[data-op="div"] { --accent: #9b7be0; --accent-dark: #7c5cc4; --accent-soft: #ece5ff; }
+body[data-op="mix"] { --accent: #2bb3a3; --accent-dark: #1f8f82; --accent-soft: #d5f4f0; }
+body[data-op="eq"] { --accent: #5b6ee1; --accent-dark: #4153c4; --accent-soft: #e3e7ff; }
 
 * { box-sizing: border-box; }
 
@@ -151,6 +153,7 @@ main {
   border-radius: calc(var(--cell) * 0.18);
   background: color-mix(in srgb, var(--accent-soft) 60%, transparent);
 }
+.answer.unknown { color: var(--accent-dark); font-style: italic; }
 .answer.ok { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); animation: pop 0.3s ease-out; }
 .answer.bad { border-color: var(--bad); background: var(--bad-bg); animation: pop 0.3s ease-out; }
 

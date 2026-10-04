@@ -1,20 +1,28 @@
 // Arithmetic drill: an example like «3 + 4 = ?» written in notebook cells, four answers below and a few
 // seconds to pick one — too little to reach for a calculator. Counts right answers and the average time.
-// Levels go from easy to hard; a round asks every example of the level once, and the best result of each
-// level is kept in the browser as stars.
-// One engine serves several lessons: each lesson's drill.json picks the operation and the levels (build_scripts/build.mjs).
+// Levels go from easy to hard; a round asks every example of the level once (or `count` of them), and the best
+// result of each level is kept in the browser as stars.
+// One engine serves several lessons: each lesson's drill.json picks the operation and the levels (build_scripts/build.mjs);
+// a mixed drill has several operations in one level, and in equations x stands for the first or the second number.
 
 // The build puts the lesson title, settings and examples sorted into levels into data.js
 declare const GAME_DATA: {
   slug: string; // lesson folder name
   title: string;
   icon: string;
-  op: Op;
+  op: Op | "mix" | "eq"; // picks the page colour
   seconds: number;
-  levels: { name: string; hint: string; examples: [number, number, number][] }[]; // [a, b, answer]
+  count: number | null; // examples in a round; null — all examples of the level
+  levels: {
+    name: string;
+    hint: string;
+    // One group per operation; an example is [a, b, c] for «a ○ b = c», plus 0 or 1 when x hides a or b
+    groups: { op: Op; examples: [number, number, number, (0 | 1)?][] }[];
+  }[];
 };
 
 type Op = "add" | "sub" | "mul" | "div";
+type Slot = "a" | "b" | "c"; // a ○ b = c
 
 const CHOICES = 4; // answer buttons: one right, the rest wrong
 const PAUSE_OK = 700; // ms a right answer stays on screen before the next example
@@ -27,9 +35,12 @@ const SIGNS: Record<Op, string> = { add: "+", sub: "−", mul: "×", div: "÷" }
 const PRAISE = ["Верно!", "Молодец!", "Здорово!", "Точно!", "Отлично!"];
 
 interface Example {
+  op: Op;
   a: number;
   b: number;
-  answer: number;
+  c: number;
+  hide: Slot; // the number to find: c in «3 + 4 = ?», a in «x + 4 = 7»
+  answer: number; // the hidden number
 }
 
 const random = <T>(list: T[]): T => list[Math.floor(Math.random() * list.length)]!;
@@ -44,19 +55,30 @@ function shuffle<T>(list: T[]): T[] {
 }
 
 /** Wrong answers that look plausible: close numbers and typical slips (the neighbour in the table, the other operation). */
-function wrongAnswers({ a, b, answer }: Example): number[] {
+function wrongAnswers({ op, a, b, c, hide, answer }: Example): number[] {
   const near = [1, 2, 3].flatMap((d) => [answer - d, answer + d]);
+  const other = hide === "a" ? b : a; // the visible number next to x
   const slips =
-    GAME_DATA.op === "sub" ? [a + b] :
-    GAME_DATA.op === "mul" ? [a * (b + 1), a * (b - 1), (a + 1) * b, (a - 1) * b, a + b] :
-    GAME_DATA.op === "div" ? [b] :
+    hide !== "c" ? [
+      // Equations: a visible number copied, or the inverse done the wrong way (adding instead of subtracting…)
+      c,
+      other,
+      op === "add" ? c + other :
+      op === "sub" ? (hide === "a" ? c - b : a + c) :
+      op === "mul" ? c - other :
+      hide === "a" ? c + b : a - c,
+    ] :
+    op === "sub" ? [a + b] :
+    op === "mul" ? [a * (b + 1), a * (b - 1), (a + 1) * b, (a - 1) * b, a + b] :
+    op === "div" ? [b] :
     [];
-  const fits = (n: number) => n >= 0 && n <= maxAnswer && n !== answer;
-  const need = Math.min(CHOICES, maxAnswer + 1) - 1; // a tiny range may not have enough numbers
+  const max = maxAnswers[op] ?? maxAnswer; // the largest answer this operation can have
+  const fits = (n: number) => n >= 0 && n <= max && n !== answer;
+  const need = Math.min(CHOICES, max + 1) - 1; // a tiny range may not have enough numbers
   const picked = shuffle([...new Set([...slips, ...near].filter(fits))]).slice(0, need);
   // Too few plausible ones — fill up with any numbers
   while (picked.length < need) {
-    const n = Math.floor(Math.random() * (maxAnswer + 1));
+    const n = Math.floor(Math.random() * (max + 1));
     if (n !== answer && !picked.includes(n)) picked.push(n);
   }
   return picked;
@@ -100,14 +122,16 @@ function saveBest(i: number, result: Best): boolean {
 
 // ---------- Game state ----------
 
-let levels: Example[][] = [];
+let levels: Example[][][] = []; // level → operation → examples
 let level = 0;
 let queue: Example[] = []; // examples left in this round
 let maxAnswer = 0;
+const boxWidth: Record<Slot, number> = { a: 1, b: 1, c: 1 }; // cells for the box of a hidden number
+const maxAnswers: Partial<Record<Op, number>> = {}; // the largest answer of each operation
 let cols = 0; // notebook cells across the paper
 
 let phase: "start" | "ask" | "show" | "done" = "start";
-let example: Example = { a: 0, b: 0, answer: 0 };
+let example: Example = { op: "add", a: 0, b: 0, c: 0, hide: "c", answer: 0 };
 let options: number[] = [];
 let picked: number | null = null; // the chosen answer; null after a timeout
 let asked = 0; // examples shown in this round
@@ -120,7 +144,8 @@ let hiddenAt = 0;
 let frame = 0;
 let pending = 0; // timeout that brings the next example
 
-const roundSize = () => levels[level]!.length;
+const levelSize = (i: number) => levels[i]!.reduce((n, group) => n + group.length, 0);
+const roundSize = () => Math.min(GAME_DATA.count ?? Infinity, levelSize(level));
 const elapsed = () => performance.now() - shownAt;
 const average = () => (times.length ? times.reduce((s, t) => s + t, 0) / times.length : null);
 const formatSeconds = (s: number) => `${s.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} с`;
@@ -154,10 +179,23 @@ function setLevel(i: number) {
   render();
 }
 
+/** Every example of the level, or `count` of them taken evenly from each operation. */
+function pickRound(): Example[] {
+  const groups = levels[level]!;
+  if (GAME_DATA.count === null) return shuffle(groups.flat());
+  const decks = groups.map(shuffle);
+  const round: Example[] = [];
+  for (let i = 0; round.length < roundSize(); i++) {
+    const next = decks[i % decks.length]!.pop();
+    if (next) round.push(next);
+  }
+  return shuffle(round);
+}
+
 function startRound() {
   stopRound();
   resetScore();
-  queue = shuffle(levels[level]!);
+  queue = pickRound();
   $("overlay").hidden = true;
   nextExample();
 }
@@ -333,27 +371,36 @@ function cell(text: string, col: number, span = 1, cls = "") {
   return node;
 }
 
+/** The parts of «a ○ b = c» and the cells each one takes: the hidden number gets a box as wide as its widest value. */
+function layout(e: Example): { text: string; slot: Slot | null; span: number }[] {
+  const parts: [string, Slot | null][] = [[String(e.a), "a"], [SIGNS[e.op], null], [String(e.b), "b"], ["=", null], [String(e.c), "c"]];
+  return parts.map(([text, slot]) => ({ text, slot, span: slot && slot === e.hide ? boxWidth[slot] : text.length }));
+}
+
 /**
  * The example in notebook cells: a cell per digit or sign, but a number's digits stay together so «11» doesn't
- * read as «1 1». Right-aligned so the answer box never moves.
+ * read as «1 1». Right-aligned so the answer box of «3 + 4 = ?» never moves.
  */
 function renderPaper() {
   const paper = $("paper");
-  const box = digits(maxAnswer);
-  const { a, b, answer } = example;
-  const parts = [String(a), SIGNS[GAME_DATA.op], String(b), "="];
-  let col = cols - box - parts.join("").length; // one empty cell of margin on the right
-  const ask = phase === "ask" || phase === "start";
-  const result = picked === answer ? "ok" : "bad";
+  const parts = layout(example);
+  let col = cols - parts.reduce((n, p) => n + p.span, 0); // one empty cell of margin on the right
+  const shown = phase === "show" || phase === "done";
+  const result = picked === example.answer ? "ok" : "bad";
   paper.replaceChildren(
-    ...parts.map((text) => {
-      const node = cell(phase === "start" ? "" : text, col, text.length);
-      col += text.length;
+    ...parts.map(({ text, slot, span }) => {
+      const hidden = slot === example.hide;
+      // The box shows x while an equation waits for the answer, then the answer itself
+      const x = phase === "ask" && slot !== "c";
+      const node = hidden
+        ? cell(shown ? text : x ? "x" : "", col, span, `answer ${shown ? result : x ? "unknown" : ""}`)
+        : cell(phase === "start" ? "" : text, col, span);
+      col += span;
       return node;
     }),
-    cell(ask ? "" : String(answer), cols - box, box, `answer ${ask ? "" : result}`),
   );
-  paper.setAttribute("aria-label", phase === "start" ? "" : `${a} ${SIGNS[GAME_DATA.op]} ${b} равно`);
+  const said = parts.map(({ text, slot }) => (slot === example.hide ? (slot === "c" ? "" : "икс") : text));
+  paper.setAttribute("aria-label", phase === "start" ? "" : said.join(" ").replace("=", "равно"));
 }
 
 function renderTimer(left: number) {
@@ -394,8 +441,8 @@ function renderScore() {
 
 function renderMessage() {
   const msg = $("message");
-  const { a, b, answer } = example;
-  const full = `${a} ${SIGNS[GAME_DATA.op]} ${b} = ${answer}`;
+  const { op, a, b, c, answer } = example;
+  const full = `${a} ${SIGNS[op]} ${b} = ${c}`;
   const n = roundSize();
   const s = GAME_DATA.seconds;
   msg.className = phase === "start" ? "info" : picked === answer ? "ok" : "bad";
@@ -425,11 +472,24 @@ function main() {
     return;
   }
   document.body.dataset.op = GAME_DATA.op;
-  levels = GAME_DATA.levels.map((lvl) => lvl.examples.map(([a, b, answer]) => ({ a, b, answer })));
-  const all = levels.flat();
+  levels = GAME_DATA.levels.map((lvl) =>
+    lvl.groups.map(({ op, examples }) =>
+      examples.map(([a, b, c, h]) => {
+        const hide: Slot = h === 0 ? "a" : h === 1 ? "b" : "c";
+        return { op, a, b, c, hide, answer: hide === "a" ? a : hide === "b" ? b : c };
+      }),
+    ),
+  );
+  const all = levels.flat(2);
   maxAnswer = Math.max(...all.map((e) => e.answer));
-  // The widest example + the answer box + a margin cell on each side
-  cols = Math.max(...all.map((e) => digits(e.a) + digits(e.b))) + 2 + digits(maxAnswer) + 2;
+  for (const e of all) {
+    maxAnswers[e.op] = Math.max(maxAnswers[e.op] ?? 0, e.answer);
+    boxWidth[e.hide] = Math.max(boxWidth[e.hide], digits(e.answer));
+  }
+  // The widest example + a margin cell on each side
+  cols = Math.max(...all.map((e) => layout(e).reduce((n, p) => n + p.span, 0))) + 2;
+  // Before the first round the paper shows just the box, where it will be
+  example = { ...all[0]!, hide: all.some((e) => e.hide !== "c") ? "a" : "c" };
   document.body.style.setProperty("--cols", String(cols)); // sizes the paper and the timer under it
 
   $("overlay-again").onclick = startRound;
