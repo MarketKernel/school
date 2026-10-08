@@ -158,6 +158,10 @@ main {
 
 .group { display: flex; gap: calc(var(--box) * 0.07); }
 
+/* A riddle answer of several words: each word is a block, a long phrase wraps between the words */
+.word.phrase { flex-wrap: wrap; justify-content: center; column-gap: calc(var(--box) * 0.7); row-gap: calc(var(--box) * 0.3); }
+.phrase-word { display: flex; align-items: center; gap: calc(var(--box) * 0.16); }
+
 .cell {
   width: var(--box);
   height: calc(var(--box) * 1.2);

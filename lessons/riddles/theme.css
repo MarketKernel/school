@@ -1,0 +1,16 @@
+/* «Загадки» — colours of a forest at dusk on top of the engine style (read-game/game/style.css) */
+
+:root {
+  --sky: #e2f1e6;          /* pale forest green */
+  --main: #3f9c7a;         /* main colour — pine green: big speaker, main button */
+  --main-dark: #2c7a5e;
+  --main-soft: #dcf2e8;
+  --tile-border: #bfe3d2;
+  --tile-shadow: #9fd3bc;
+  --level-1: #f2b31c;      /* level colours: meadow flowers / mushroom red / owl brown */
+  --level-1-soft: #fff1c9;
+  --level-2: #e0605a;
+  --level-2-soft: #ffe3e1;
+  --level-3: #8a6a4f;
+  --level-3-soft: #f1e6dc;
+}

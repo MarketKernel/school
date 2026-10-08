@@ -1,4 +1,6 @@
 // «Собери слово» mode "assemble": the word is split into syllables and the child assembles it from the tiles below.
+// Riddle lessons (game.json "mode": "riddle") use this file too: the big speaker plays the riddle instead of the word,
+// and the answer is assembled the same way.
 // Shared parts (words, split, sounds, levels, cells) are in common.ts; a namespace keeps this mode's names apart from aloud.ts.
 
 namespace Assemble {
@@ -12,6 +14,12 @@ namespace Assemble {
   let placed: Tile[] = [];
   let result: "ok" | "bad" | null = null;
   let busy = false; // a check is in progress — tiles are locked
+
+  const riddles = GAME_DATA.riddles; // set only in a riddle lesson: answer -> sound of the riddle
+  const labels = riddles ? { other: "Другая загадка", next: "Следующая загадка →" } : { other: "Другое слово", next: "Следующее слово →" };
+
+  /** The big speaker: the riddle, or the word by syllables. */
+  const sayWord = () => (riddles ? playFile(riddles[entry]!) : playParts(parts));
 
   const placedText = () => placed.map((t) => t.text).join("");
   const isFull = () => placedText().length === word.length;
@@ -37,6 +45,8 @@ namespace Assemble {
     tiles = shuffle([...parts, ...decoys(parts)]).map((text, id) => ({ id, text, used: false }));
     placed = [];
     result = null;
+    // A new riddle is read at once; before the first tap the browser blocks sound, and the child taps 🔊
+    if (riddles) void sayWord();
   }
 
   function place(tile: Tile, el: HTMLElement) {
@@ -116,7 +126,7 @@ namespace Assemble {
     ($("check") as HTMLButtonElement).disabled = busy || !isFull() || result === "ok";
     $("check").hidden = result === "ok";
     $("next").classList.toggle("primary", result === "ok");
-    $("next").textContent = result === "ok" ? "Следующее слово →" : "Другое слово";
+    $("next").textContent = result === "ok" ? labels.next : labels.other;
 
     const message = $("message");
     message.className = result ?? "";
@@ -124,6 +134,7 @@ namespace Assemble {
       result === "ok" ? random(["Правильно! Молодец!", "Ура! Получилось!", "Отлично!", "Здорово!"]) :
       result === "bad" ? "Не так. Сотри и попробуй ещё раз" :
       busy ? "Слушаем…" :
+      riddles && !placed.length ? "Послушай загадку 🔊 и собери отгадку" :
       "";
   }
 
@@ -135,9 +146,13 @@ namespace Assemble {
 
   // ---------- Startup ----------
 
-  if (startGame({ newRound: startRound, render: renderMode, busy: () => busy })) {
+  if (startGame({ newRound: startRound, render: renderMode, busy: () => busy, everyWord: !!riddles })) {
     $("say-word").innerHTML = SPEAKER_SVG;
-    $("say-word").onclick = () => playParts(parts);
+    $("say-word").onclick = sayWord;
+    if (riddles) {
+      $("say-word").title = "Послушать загадку ещё раз";
+      $("say-word").setAttribute("aria-label", "Послушать загадку");
+    }
     $("erase").onclick = erase;
     $("check").onclick = check;
     $("next").onclick = next;

@@ -1,20 +1,21 @@
 // Builds one arithmetic drill lesson into <lesson>/build/: page, styles, code and the drill's examples.
-// This engine is shared by math-addition, math-subtraction, math-multiplication, math-division, math-mix, math-equations…;
+// This engine is shared by math-addition, math-subtraction, math-multiplication, math-division, math-compare, math-mix,
+// math-equations…;
 // each of them calls it from its lesson.json:
 //   (cd ../math-drill/game && npm ci) && node ../math-drill/game/build_scripts/build.mjs .
 //
 // The lesson folder holds lesson.json (title and icon are reused for the page) and drill.json:
-//   op      — "add", "sub", "mul" or "div"
+//   op      — "add", "sub", "mul", "div" or "cmp" (compare two numbers: «3 ○ 5», the answer is <, = or >)
 //   from    — smallest number, e.g. 0
 //   to      — largest number, e.g. 9
 //   seconds — time to answer one example
 //   count   — optional: examples in a round; without it a round asks every example of the level once
 //   unknown — optional: true turns examples into equations, x stands for the first or the second number:
 //             «x + 4 = 7», «3 × x = 12». Equations where x could be anything (0 × x = 0) are left out.
-//   levels  — from easy to hard; each one is { name, hint, upTo } for add/sub or { name, hint, tables } for mul/div:
+//   levels  — from easy to hard; each one is { name, hint, upTo } for add/sub/cmp or { name, hint, tables } for mul/div:
 //     name   — short label on the level button: «до 5», «на 2 и 5»
 //     hint   — one line on what the level is about, shown before the round
-//     upTo   — add/sub: the level takes examples whose sum x + y is at most upTo
+//     upTo   — add/sub: the level takes examples whose sum x + y is at most upTo; cmp: both numbers are at most upTo
 //     tables — mul/div: the level takes examples where x or y is one of these numbers
 //   Every example goes to the first level that takes it.
 //
@@ -31,6 +32,8 @@
 //
 // Examples are built from pairs x, y in [from, to]: add asks x + y, mul asks x × y, and sub and div are them read
 // backwards — (x + y) − y and (x × y) ÷ y (y ≠ 0) — so answers are never negative or fractional.
+// cmp asks «x ○ y»: its example is [x, y, −1 | 0 | 1] for <, = or >, and each level has one group per answer, so
+// a round with `count` has as many «=» as «<» and «>». A comparison can't be mixed, have fractions or be an equation.
 //
 // The result opens by double-clicking build/index.html or can be served from any static host.
 
@@ -56,7 +59,8 @@ function drillLevels(drill, where) {
   const fail = (text) => {
     throw new Error(`${where}: ${text}`);
   };
-  if (!["add", "sub", "mul", "div"].includes(drill.op)) fail(`op должен быть add, sub, mul или div, а не ${drill.op}`);
+  if (!["add", "sub", "mul", "div", "cmp"].includes(drill.op)) fail(`op должен быть add, sub, mul, div или cmp, а не ${drill.op}`);
+  if (drill.op === "cmp" && (drill.fractions || drill.unknown)) fail("сравнение (cmp) не бывает с fractions или unknown");
   if (drill.fractions) return fractionLevels(drill, fail);
   if (!isInt(drill.from) || !isInt(drill.to) || drill.from > drill.to) fail("from и to — целые числа от 0, from ≤ to");
   if (drill.op === "div" && drill.to === 0) fail("для деления нужен делитель больше 0 — увеличьте to");
@@ -74,9 +78,13 @@ function drillLevels(drill, where) {
       case "sub": return [x + y, y, x];
       case "mul": return [x, y, x * y];
       case "div": return y === 0 ? null : [x * y, y, x];
+      case "cmp": return [x, y, Math.sign(x - y)];
     }
   };
-  const takes = (level, x, y) => (byTables ? level.tables.includes(x) || level.tables.includes(y) : x + y <= level.upTo);
+  const takes = (level, x, y) =>
+    byTables ? level.tables.includes(x) || level.tables.includes(y) :
+    drill.op === "cmp" ? Math.max(x, y) <= level.upTo :
+    x + y <= level.upTo;
   const levels = drill.levels.map((level) => ({ name: level.name, hint: level.hint, examples: [] }));
   let unused = 0;
   for (let x = drill.from; x <= drill.to; x++) {
@@ -91,7 +99,11 @@ function drillLevels(drill, where) {
   const empty = levels.find((level) => !level.examples.length);
   if (empty) fail(`в уровень «${empty.name}» не попал ни один пример — проверьте ${key}`);
   if (unused) console.log(`${where}: не попали ни в один уровень — ${unused} примеров`);
-  return levels.map(({ name, hint, examples }) => ({ name, hint, groups: [{ op: drill.op, examples }] }));
+  // A comparison has a group per answer: picked evenly, «=» isn't a rare guess
+  const groups = (examples) =>
+    drill.op === "cmp" ? [-1, 0, 1].map((s) => ({ op: "cmp", examples: examples.filter((e) => e[2] === s) })).filter((g) => g.examples.length) :
+    [{ op: drill.op, examples }];
+  return levels.map(({ name, hint, examples }) => ({ name, hint, groups: groups(examples) }));
 }
 
 // ---------- Fractions ----------
@@ -147,7 +159,11 @@ function mixLevels(drill) {
   if (!Array.isArray(drill.levels) || !drill.levels.every((level) => level.name && level.hint)) {
     throw new Error("drill.json: нужен список уровней levels, у каждого name и hint");
   }
-  const sources = drill.mix.map((name) => drillLevels(readJson(join(lesson, "..", name), "drill.json"), `${name}/drill.json`));
+  const sources = drill.mix.map((name) => {
+    const source = readJson(join(lesson, "..", name), "drill.json");
+    if (source.op === "cmp") throw new Error(`drill.json: сравнение ${name} нельзя смешивать с другими действиями`);
+    return drillLevels(source, `${name}/drill.json`);
+  });
   for (const name of new Set(drill.levels.flatMap((level) => Object.keys(level.take ?? {})))) {
     if (!drill.mix.includes(name)) throw new Error(`drill.json: в take указан ${name}, а его нет в mix`);
   }

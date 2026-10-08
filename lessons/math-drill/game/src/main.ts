@@ -5,6 +5,7 @@
 // One engine serves several lessons: each lesson's drill.json picks the operation and the levels (build_scripts/build.mjs);
 // a mixed drill has several operations in one level, and in equations x stands for the first or the second number.
 // Numbers may be fractions: they are written the school way, numerator above the bar and denominator below.
+// A comparison drill asks «3 ○ 5» instead, and the answer is one of the signs <, = or >.
 
 // The build puts the lesson title, settings and examples sorted into levels into data.js
 declare const GAME_DATA: {
@@ -17,12 +18,13 @@ declare const GAME_DATA: {
   levels: {
     name: string;
     hint: string;
-    // One group per operation; an example is [a, b, c] for «a ○ b = c», plus 0 or 1 when x hides a or b
+    // One group per operation; an example is [a, b, c] for «a ○ b = c», plus 0 or 1 when x hides a or b.
+    // A comparison «a ○ b» has c = −1, 0 or 1 for <, = or >, and one group per answer
     groups: { op: Op; examples: [Raw, Raw, Raw, (0 | 1)?][] }[];
   }[];
 };
 
-type Op = "add" | "sub" | "mul" | "div";
+type Op = "add" | "sub" | "mul" | "div" | "cmp";
 type Raw = number | string; // a number in data.js: 7 or "7/6"
 type Slot = "a" | "b" | "c"; // a ○ b = c
 
@@ -33,7 +35,10 @@ const HURRY = 0.33; // share of time left when the timer turns red
 const STARS = [0.5, 0.7, 0.9]; // share of right answers for one, two and three stars
 const NEXT_LEVEL_STARS = 2; // from this many stars the results dialog suggests the next level
 
-const SIGNS: Record<Op, string> = { add: "+", sub: "−", mul: "×", div: "÷" };
+const SIGNS: Record<Exclude<Op, "cmp">, string> = { add: "+", sub: "−", mul: "×", div: "÷" };
+// The answers of a comparison, by c + 1: −1 is «<», 0 is «=», 1 is «>»
+const RELATIONS = ["<", "=", ">"];
+const RELATION_WORDS = ["меньше", "равно", "больше"];
 const PRAISE = ["Верно!", "Молодец!", "Здорово!", "Точно!", "Отлично!"];
 
 interface Example {
@@ -41,7 +46,7 @@ interface Example {
   a: Num;
   b: Num;
   c: Num;
-  hide: Slot; // the number to find: c in «3 + 4 = ?», a in «x + 4 = 7»
+  hide: Slot; // the number to find: c in «3 + 4 = ?» and in «3 ○ 5», a in «x + 4 = 7»
   answer: Num; // the hidden number
 }
 
@@ -268,7 +273,8 @@ function nextExample() {
   const next = queue.pop();
   if (!next) return finishRound();
   example = next;
-  options = [example.answer, ...wrongAnswers(example)].sort((x, y) => value(x) - value(y));
+  options =
+    example.op === "cmp" ? [-1, 0, 1].map(whole) : [example.answer, ...wrongAnswers(example)].sort((x, y) => value(x) - value(y));
   picked = null;
   asked++;
   phase = "ask";
@@ -437,6 +443,10 @@ function numberNode(x: Num): HTMLElement {
   return node;
 }
 
+/** An answer as it is shown: a number, or a sign for a comparison. */
+const answerNode = (x: Num) => (example.op === "cmp" ? el("span", "", RELATIONS[x.n + 1]!) : numberNode(x));
+const answerLabel = (x: Num) => (example.op === "cmp" ? RELATION_WORDS[x.n + 1]! : show(x));
+
 /** Cells taken by a number: its longest line of digits. */
 const width = (x: Num) => Math.max(digits(x.n), x.d === 1 ? 0 : digits(x.d));
 
@@ -449,11 +459,14 @@ function cell(content: string | HTMLElement, col: number, span = 1, cls = "") {
   return node;
 }
 
-/** The parts of «a ○ b = c» and the cells each one takes: the hidden number gets a box as wide as its widest value. */
+/**
+ * The parts of «a ○ b = c» and the cells each one takes: the hidden number gets a box as wide as its widest value.
+ * A comparison is «a ○ b», its answer box stands between the numbers.
+ */
 function layout(e: Example): { num: Num | null; text: string; slot: Slot | null; span: number }[] {
-  const parts: [Num | null, string, Slot | null][] = [
-    [e.a, "", "a"], [null, SIGNS[e.op], null], [e.b, "", "b"], [null, "=", null], [e.c, "", "c"],
-  ];
+  const parts: [Num | null, string, Slot | null][] =
+    e.op === "cmp" ? [[e.a, "", "a"], [e.c, "", "c"], [e.b, "", "b"]] :
+    [[e.a, "", "a"], [null, SIGNS[e.op], null], [e.b, "", "b"], [null, "=", null], [e.c, "", "c"]];
   return parts.map(([num, text, slot]) => ({
     num,
     text,
@@ -479,7 +492,7 @@ function renderPaper() {
       if (slot && slot === example.hide) {
         // The box shows x while an equation waits for the answer, then the answer itself
         const x = phase === "ask" && slot !== "c";
-        node = cell(shown ? numberNode(num!) : x ? "x" : "", col, span, `answer ${shown ? result : x ? "unknown" : ""}`);
+        node = cell(shown ? answerNode(num!) : x ? "x" : "", col, span, `answer ${shown ? result : x ? "unknown" : ""}`);
       } else {
         node = cell(blank ? "" : num ? numberNode(num) : text, col, span);
       }
@@ -506,11 +519,12 @@ function renderOptions() {
     $("options").replaceChildren(start);
     return;
   }
+  $("options").classList.toggle("signs", example.op === "cmp");
   $("options").replaceChildren(
     ...options.map((n) => {
       const btn = el("button", "option");
-      btn.append(numberNode(n));
-      btn.setAttribute("aria-label", show(n));
+      btn.append(answerNode(n));
+      btn.setAttribute("aria-label", answerLabel(n));
       btn.disabled = phase !== "ask";
       if (phase !== "ask") {
         if (same(n, example.answer)) btn.classList.add("ok");
@@ -534,7 +548,7 @@ function renderScore() {
 function renderMessage() {
   const msg = $("message");
   const { op, a, b, c } = example;
-  const full = `${show(a)} ${SIGNS[op]} ${show(b)} = ${show(c)}`;
+  const full = op === "cmp" ? `${show(a)} ${RELATIONS[c.n + 1]} ${show(b)}` : `${show(a)} ${SIGNS[op]} ${show(b)} = ${show(c)}`;
   const n = roundSize();
   const s = GAME_DATA.seconds;
   msg.className = phase === "start" ? "info" : isRight() ? "ok" : "bad";
@@ -581,7 +595,7 @@ function main() {
   maxAnswer = Math.max(...all.map((e) => value(e.answer)));
   for (const e of all) {
     maxAnswers[e.op] = Math.max(maxAnswers[e.op] ?? 0, value(e.answer));
-    boxWidth[e.hide] = Math.max(boxWidth[e.hide], width(e.answer));
+    boxWidth[e.hide] = Math.max(boxWidth[e.hide], e.op === "cmp" ? 1 : width(e.answer)); // a sign takes one cell
   }
   // The widest example + a margin cell on each side
   cols = Math.max(...all.map((e) => layout(e).reduce((n, p) => n + p.span, 0))) + 2;

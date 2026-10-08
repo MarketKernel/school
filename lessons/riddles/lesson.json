@@ -1,0 +1,10 @@
+{
+  "title": "Загадки",
+  "description": "Слушаем загадку и собираем отгадку по слогам.",
+  "subject": "Чтение",
+  "icon": "🦉",
+  "order": 13,
+  "uses": ["russian"],
+  "build": "(cd ../read-game/game && npm ci) && node ../read-game/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

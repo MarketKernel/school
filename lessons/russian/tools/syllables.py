@@ -79,14 +79,19 @@ def word_folders() -> list[Path]:
 
 
 def read_words(folder: Path) -> list[str]:
-    """Words in lower case: data/words.txt or, without it, the words of data/pictures.tsv."""
-    words_file, pictures = folder / "data" / "words.txt", folder / "data" / "pictures.tsv"
+    """Words in lower case: data/words.txt or, without it, the words of data/pictures.tsv;
+    in a riddle lesson the words of the answers in data/riddles.json («Дни недели» → «дни», «недели»).
+    Same rule as the read-game engine build (read-game/game/build_scripts/build.mjs)."""
+    data = folder / "data"
+    words_file, pictures, riddles = data / "words.txt", data / "pictures.tsv", data / "riddles.json"
     if words_file.exists():
         cells = [line.split("\t")[-1] for line in words_file.read_text(encoding="utf-8").splitlines()]
     elif pictures.exists():
         cells = [(line.split("\t") + ["", ""])[1] for line in pictures.read_text(encoding="utf-8").splitlines()[1:]]
+    elif riddles.exists():
+        cells = [w for r in json.loads(riddles.read_text(encoding="utf-8")) for w in r["answer"].split()]
     else:
-        raise SystemExit(f"{folder.name}: нет ни data/words.txt, ни data/pictures.tsv")
+        raise SystemExit(f"{folder.name}: нет ни data/words.txt, ни data/pictures.tsv, ни data/riddles.json")
     return list(dict.fromkeys(c.strip().lower() for c in cells if c.strip()))
 
 

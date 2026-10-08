@@ -1,6 +1,6 @@
 // «Собери слово» engine: what both game modes share — words, syllable split, sounds, levels, effects and the word cells.
 // One engine for several reading lessons: each lesson brings its words, pictures and story (game.json).
-// The page loads data.js, then this file, then one mode: assemble.js (tiles) or aloud.js (reading aloud).
+// The page loads data.js, then this file, then one mode: assemble.js (tiles; riddle lessons too) or aloud.js (reading aloud).
 // These are classic scripts, not modules, so they share one global scope.
 
 /** A level's end dialog from game.json; «{n}» in text is the number of words collected. */
@@ -17,7 +17,8 @@ declare const GAME_DATA: {
   lesson: string; // lesson folder name — the key prefix for saved progress
   source: string; // shared folder with the sounds: lessons/russian
   imageSource: string; // shared folder with the pictures, or "" when they are copied into the lesson
-  words: string[]; // as written, names with a capital letter: «Гарри»
+  words: string[]; // as written, names with a capital letter: «Гарри»; a riddle answer may be several words
+  riddles?: Record<string, string>; // riddle lessons only: answer -> the riddle's sound, audio/….mp3 next to the page
   syllables: Record<string, string>;
   letters: Record<string, string>;
   soft: Record<string, string>; // soft consonants «ть», «ль»…
@@ -118,6 +119,13 @@ function playOne(url: string): Promise<void> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Plays one sound file (a riddle). Like playParts, it interrupts what is playing and is interrupted by the next call. */
+async function playFile(url: string): Promise<void> {
+  ++playToken;
+  stopCurrent?.();
+  await playOne(url);
+}
+
 /** Plays the parts one after another. A new call interrupts the previous one. */
 async function playParts(parts: string[]): Promise<void> {
   const token = ++playToken;
@@ -151,9 +159,9 @@ const DIFFICULTY = [
 let LEVELS: Level[] = [];
 let doneIcon = "";
 let confettiIcons: string[] = [];
-const PIPS = 5; // pips under each level button
-const WORDS_PER_PIP = 5; // words per pip — it glows brighter with each word
-const WORDS_PER_LEVEL = PIPS * WORDS_PER_PIP; // words needed to complete a level
+const PIPS = 5; // pips under each level button; each glows brighter with each word
+const WORDS_PER_LEVEL = 25; // words needed to complete a level (5 per pip)
+let goals: number[] = []; // per level: WORDS_PER_LEVEL, or every word of it when each word is played once
 
 // ---------- Game state ----------
 
@@ -162,6 +170,9 @@ interface Mode {
   newRound(): void; // a new word has been picked: entry, word and parts are set
   render(): void; // redraw the mode's own part of the page
   busy(): boolean; // true while the level must not change (a check is in progress)
+  // Riddles: every word (answer) is played once, and a level is complete when all of its words are done.
+  // Such a lesson keeps all its words, even one-syllable ones («Мел») and phrases («Дни недели»).
+  everyWord?: boolean;
 }
 let mode: Mode;
 
@@ -169,9 +180,23 @@ let wordsByLevel: string[][] = [];
 let level = 0;
 let progress: number[] = []; // words done on each level
 let seen: Set<string>[] = []; // so words don't repeat until all have been used
-let entry = ""; // the word as written in the lesson: «Гарри»
-let word = ""; // the same in lower case — tiles and checks use it
+let solved: Set<string>[] = []; // words done on each level (counted once when everyWord)
+let entry = ""; // the word as written in the lesson: «Гарри», «Дни недели»
+let word = ""; // its letters in lower case, without spaces — tiles and checks use it
+let letters = ""; // its letters as written, without spaces: a right letter is shown in the word's own case
 let parts: string[] = [];
+let wordStarts = new Set<number>(); // indexes in parts where the second, third… word of a phrase begins
+
+/** Parts of a phrase: each word is split on its own («дни недели» → д-ни | не-де-ли). */
+function splitPhrase(phrase: string): { parts: string[]; starts: Set<number> } {
+  const parts: string[] = [];
+  const starts = new Set<number>();
+  for (const w of lower(phrase).split(/\s+/).filter(Boolean)) {
+    if (parts.length) starts.add(parts.length);
+    parts.push(...splitWord(w));
+  }
+  return { parts, starts };
+}
 
 const random = <T>(list: T[]): T => list[Math.floor(Math.random() * list.length)]!;
 
@@ -184,11 +209,16 @@ function shuffle<T>(list: T[]): T[] {
   return a;
 }
 
-/** Only words with pictures (if the level has any), in rotation: no repeats until all have been shown. */
+/**
+ * Only words with pictures (if the level has any), in rotation: no repeats until all have been shown.
+ * With everyWord, only the words not done yet, while there are any.
+ */
 function pickWord(): string {
   const all = wordsByLevel[level]!;
   const withPicture = all.filter((w) => imageFiles[w]);
-  const pool = withPicture.length ? withPicture : all;
+  let pool = withPicture.length ? withPicture : all;
+  const todo = pool.filter((w) => !solved[level]!.has(w));
+  if (mode.everyWord && todo.length) pool = todo;
   let fresh = pool.filter((w) => !seen[level]!.has(w) && w !== entry);
   if (!fresh.length) {
     seen[level]!.clear();
@@ -201,8 +231,9 @@ function pickWord(): string {
 
 function newRound() {
   entry = pickWord();
-  word = lower(entry);
-  parts = splitWord(word);
+  letters = entry.replace(/\s+/g, "");
+  word = lower(letters);
+  ({ parts, starts: wordStarts } = splitPhrase(entry));
   mode.newRound();
   render();
 }
@@ -215,8 +246,12 @@ function setLevel(index: number) {
 
 /** One more word done on the current level; the dialog comes when the level is complete. */
 function addProgress() {
-  progress[level] = Math.min(WORDS_PER_LEVEL, progress[level]! + 1);
-  if (progress[level] === WORDS_PER_LEVEL) setTimeout(showLevelDone, 1200);
+  const again = solved[level]!.has(entry);
+  solved[level]!.add(entry);
+  if (mode.everyWord && again) return; // a riddle solved before doesn't count twice
+  const goal = goals[level]!;
+  progress[level] = Math.min(goal, progress[level]! + 1);
+  if (progress[level] === goal) setTimeout(showLevelDone, 1200);
 }
 
 // ---------- Effects: right/wrong chime and confetti ----------
@@ -264,12 +299,13 @@ function showLevelDone() {
   const lvl = LEVELS[level]!;
   $("overlay-icon").textContent = lvl.done.icon ?? lvl.icon;
   $("overlay-title").textContent = lvl.done.title;
-  $("overlay-text").textContent = lvl.done.text.split("{n}").join(String(WORDS_PER_LEVEL));
+  $("overlay-text").textContent = lvl.done.text.split("{n}").join(String(goals[level]));
   $("overlay-btn").textContent = lvl.done.button;
   $("overlay-btn").onclick = () => {
     $("overlay").hidden = true;
     if (last) {
       progress = LEVELS.map(() => 0);
+      solved = LEVELS.map(() => new Set<string>());
       setLevel(0);
     } else {
       setLevel(level + 1);
@@ -299,11 +335,12 @@ function renderLevels() {
   box.replaceChildren();
   LEVELS.forEach((lvl, i) => {
     const btn = document.createElement("button");
-    const done = progress[i] === WORDS_PER_LEVEL;
+    const done = progress[i] === goals[i];
     btn.className = "level" + (i === level ? " current" : "") + (done ? " done" : "");
     btn.title = `${lvl.name}: ${lvl.hint}`;
+    const perPip = goals[i]! / PIPS;
     const pips = Array.from({ length: PIPS }, (_, k) => {
-      const fill = Math.max(0, Math.min(1, (progress[i]! - k * WORDS_PER_PIP) / WORDS_PER_PIP));
+      const fill = Math.max(0, Math.min(1, (progress[i]! - k * perPip) / perPip));
       return `<i class="${fill === 1 ? "full" : ""}" style="--fill:${fill}"></i>`;
     }).join("");
     btn.innerHTML = `<span class="level-icon">${done ? doneIcon : lvl.icon}</span>` +
@@ -322,33 +359,44 @@ function renderPicture() {
 }
 
 /**
- * The word cells, grouped by parts with dots between them. `letters` fills them from the start;
- * `result` colours them: "ok" — a green wave, "bad" — wrong letters red.
+ * The word cells, grouped by parts with dots between them. Each word of a phrase («Дни недели») is its own block,
+ * so a long phrase wraps between words, never inside one.
+ * `typed` fills the cells from the start; `result` colours them: "ok" — a green wave, "bad" — wrong letters red.
  */
-function renderWord(letters: string, result: "ok" | "bad" | null) {
+function renderWord(typed: string, result: "ok" | "bad" | null) {
   const box = $("word");
   box.replaceChildren();
-  // Cell size adapts to the word length
-  box.style.setProperty("--n", String(word.length + (parts.length - 1) * 0.5));
+  const words: string[][] = [];
+  parts.forEach((part, pi) => {
+    if (pi === 0 || wordStarts.has(pi)) words.push([]);
+    words[words.length - 1]!.push(part);
+  });
+  // Cell size adapts to the length of the longest word: letters + room for the dots
+  const size = (w: string[]) => w.join("").length + (w.length - 1) * 0.5;
+  box.style.setProperty("--n", String(Math.max(...words.map(size))));
+  box.classList.toggle("phrase", words.length > 1);
 
   let index = 0;
-  parts.forEach((part, pi) => {
-    if (pi > 0) box.append(Object.assign(document.createElement("span"), { className: "dot" }));
-    const group = document.createElement("span");
-    group.className = "group";
-    for (const _ of part) {
-      const cell = document.createElement("span");
-      cell.className = "cell";
-      const letter = letters[index] ?? "";
-      cell.textContent = letter === word[index] ? entry[index]! : letter; // a right first letter of a name is capital
-      if (letter) cell.classList.add("filled");
-      if (result) cell.classList.add(letter === word[index] ? "ok" : "bad");
-      if (result === "ok") cell.style.setProperty("--i", String(index)); // wave across the letters
-      group.append(cell);
-      index++;
-    }
-    box.append(group);
-  });
+  for (const w of words) {
+    const holder = words.length > 1 ? box.appendChild(Object.assign(document.createElement("span"), { className: "phrase-word" })) : box;
+    w.forEach((part, pi) => {
+      if (pi > 0) holder.append(Object.assign(document.createElement("span"), { className: "dot" }));
+      const group = document.createElement("span");
+      group.className = "group";
+      for (const _ of part) {
+        const cell = document.createElement("span");
+        cell.className = "cell";
+        const letter = typed[index] ?? "";
+        cell.textContent = letter === word[index] ? letters[index]! : letter; // a right first letter of a name is capital
+        if (letter) cell.classList.add("filled");
+        if (result) cell.classList.add(letter === word[index] ? "ok" : "bad");
+        if (result === "ok") cell.style.setProperty("--i", String(index)); // wave across the letters
+        group.append(cell);
+        index++;
+      }
+      holder.append(group);
+    });
+  }
 }
 
 function render() {
@@ -378,9 +426,14 @@ function startGame(gameMode: Mode): boolean {
   confettiIcons = story.confetti;
   progress = LEVELS.map(() => 0);
   seen = LEVELS.map(() => new Set<string>());
-  // Only Russian words with at least two syllables (two vowels); split into levels by tile count
-  const words = GAME_DATA.words.filter((w) => /^[а-яё]+$/.test(lower(w)) && syllableCount(lower(w)) >= 2);
-  wordsByLevel = LEVELS.map((lvl) => words.filter((w) => lvl.fits(splitWord(lower(w)).length)));
+  solved = LEVELS.map(() => new Set<string>());
+  // Only Russian words with at least two syllables (two vowels); riddle answers are all kept (everyWord).
+  // Split into levels by tile count
+  const words = gameMode.everyWord
+    ? GAME_DATA.words.filter((w) => /^[а-яё]+( [а-яё]+)*$/.test(lower(w)))
+    : GAME_DATA.words.filter((w) => /^[а-яё]+$/.test(lower(w)) && syllableCount(lower(w)) >= 2);
+  wordsByLevel = LEVELS.map((lvl) => words.filter((w) => lvl.fits(splitPhrase(w).parts.length)));
+  goals = wordsByLevel.map((list) => (gameMode.everyWord ? list.length : WORDS_PER_LEVEL));
   newRound();
   return true;
 }

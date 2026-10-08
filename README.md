@@ -9,11 +9,13 @@
 | 🐷 Собери слово — чтение по слогам | Чтение | [lessons/read-syllables](lessons/read-syllables) |
 | 🪄 Волшебные слова — чтение по слогам, слова из «Гарри Поттера» | Чтение | [lessons/read-potter](lessons/read-potter) |
 | 🎤 Прочитай вслух — слова из «Гарри Поттера» по слогам, браузер слушает и проверяет | Чтение | [lessons/read-potter-aloud](lessons/read-potter-aloud) |
+| 🦉 Загадки — послушать загадку и собрать отгадку по слогам | Чтение | [lessons/riddles](lessons/riddles) |
 | ➕ Сложение — числа от 0 до 9 | Математика | [lessons/math-addition](lessons/math-addition) |
 | ➖ Вычитание — сложение наоборот | Математика | [lessons/math-subtraction](lessons/math-subtraction) |
 | ✖️ Умножение — таблица от 0 до 9 | Математика | [lessons/math-multiplication](lessons/math-multiplication) |
 | ➗ Деление — умножение наоборот | Математика | [lessons/math-division](lessons/math-division) |
 | 🎲 Всё вперемешку — четыре действия в одном раунде | Математика | [lessons/math-mix](lessons/math-mix) |
+| ⚖️ Сравнение чисел — поставь <, > или = | Математика | [lessons/math-compare](lessons/math-compare) |
 | 🔎 Уравнения — найди x, четыре действия вперемешку | Математика | [lessons/math-equations](lessons/math-equations) |
 | ➕ Сложение дробей | Дроби | [lessons/fractions-addition](lessons/fractions-addition) |
 | ➖ Вычитание дробей | Дроби | [lessons/fractions-subtraction](lessons/fractions-subtraction) |

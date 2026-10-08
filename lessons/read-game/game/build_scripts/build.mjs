@@ -9,6 +9,7 @@
 //                     Without it the words are the ones in data/pictures.tsv. Same rule as read_words()
 //                     in russian/tools/syllables.py. Names keep their capital letter: «Гарри».
 //   data/pictures.tsv, images/, images.json — word pictures made by tools/draw.py; optional
+//   data/riddles.json, audio/ — riddle lessons only (mode "riddle", see below)
 //   theme.css       — optional: colours and decorations on top of the engine's style.css
 // Words and pictures used by several lessons live in a shared folder instead (lessons/potter): the same data/,
 // images/ and images.json, plus shared.json. The lesson then names it in game.json "words" and in lesson.json
@@ -18,6 +19,10 @@
 //   mode         — "assemble" (default): build the word from tiles; "aloud": read the shown word aloud,
 //                  browser speech recognition checks it. "aloud" shows no picture and plays no sound — the child
 //                  must read, not guess or repeat — so it loads nothing from shared folders and needs no "uses".
+//                  "riddle": the big speaker plays a riddle, the child assembles its answer from tiles (the
+//                  "assemble" code). Riddles come from the lesson's data/riddles.json ({ id, answer } each, made by
+//                  the lesson's tools), their sounds from its audio/<id>.mp3; a riddle without a sound is left out.
+//                  Every answer is played once, a level is complete when all its riddles are solved.
 //   words        — optional: shared folder with the words and pictures, e.g. "potter"
 //   levels       — exactly three, by tile count: 2–3, 4, 5 and more. Each is { name, icon, done }:
 //     name, icon — label and emoji of the level button
@@ -62,11 +67,16 @@ const fail = (text) => {
 
 const meta = readJson(join(lesson, "lesson.json"));
 const story = readJson(join(lesson, "game.json"));
-const MODES = ["assemble", "aloud"];
+const MODES = ["assemble", "aloud", "riddle"];
 const mode = story.mode ?? "assemble";
-if (!MODES.includes(mode)) fail(`mode должен быть ${MODES.join(" или ")}, а не ${mode}`);
-// Pictures and sounds are only for "assemble"; "aloud" takes just the word list
-const media = mode === "assemble";
+if (!MODES.includes(mode)) fail(`mode должен быть ${MODES.join(", ")}, а не ${mode}`);
+const riddle = mode === "riddle";
+// The page's code: a riddle lesson is "assemble" with the riddle's sound instead of the word's
+const code = riddle ? "assemble" : mode;
+const CODES = ["assemble", "aloud"];
+// Pictures and syllable sounds are only for "assemble" and "riddle"; "aloud" takes just the word list
+const media = mode !== "aloud";
+if (riddle && story.words !== undefined) fail("у загадок слова свои — data/riddles.json, words не нужен");
 const needUses = (folder, what) => {
   if (!(meta.uses ?? []).includes(folder)) throw new Error(`${where}/lesson.json: добавьте "${folder}" в "uses" — оттуда ${what}`);
 };
@@ -90,8 +100,19 @@ if (!Array.isArray(story.confetti) || !story.confetti.length) fail("нужен �
 const wordsDir = story.words ? join(lesson, "..", story.words) : lesson;
 const wordsFile = join(wordsDir, "data", "words.txt");
 const picturesFile = join(wordsDir, "data", "pictures.tsv");
+const riddlesFile = join(wordsDir, "data", "riddles.json");
 let words;
-if (existsSync(wordsFile)) {
+let riddles; // answer -> audio/<id>.mp3
+if (riddle) {
+  const list = readJson(riddlesFile);
+  const voiced = list.filter((r) => existsSync(join(lesson, "audio", `${r.id}.mp3`)));
+  if (!voiced.length) throw new Error(`${where}: нет звуков загадок в audio/ — сначала озвучьте их`);
+  if (voiced.length < list.length) {
+    console.warn(`Без звука, пропущены: ${list.filter((r) => !voiced.includes(r)).map((r) => r.id).join(", ")}`);
+  }
+  riddles = Object.fromEntries(voiced.map((r) => [r.answer, `audio/${r.id}.mp3`]));
+  words = Object.keys(riddles);
+} else if (existsSync(wordsFile)) {
   words = readFileSync(wordsFile, "utf8").split("\n").map((line) => (line.split("\t").pop() ?? "").trim());
 } else if (existsSync(picturesFile)) {
   words = readFileSync(picturesFile, "utf8").split("\n").slice(1).map((line) => (line.split("\t")[1] ?? "").trim());
@@ -116,20 +137,22 @@ mkdirSync(out);
 
 // TypeScript -> build/common.js and one file per mode; the page needs only its own mode
 execSync(`npx tsc --outDir "${out}"`, { cwd: game, stdio: "inherit" });
-for (const other of MODES.filter((m) => m !== mode)) rmSync(join(out, `${other}.js`));
+for (const other of CODES.filter((m) => m !== code)) rmSync(join(out, `${other}.js`));
 
 // The page takes its title and favicon from lesson.json
 const escape = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const html = readFileSync(join(game, "index.html"), "utf8")
   .replaceAll("__TITLE__", escape(meta.title))
   .replaceAll("__ICON__", escape(meta.icon ?? "📖"))
-  .replaceAll("__MODE__", mode);
+  .replaceAll("__MODE__", code);
 writeFileSync(join(out, "index.html"), html);
 cpSync(join(game, "style.css"), join(out, "style.css"));
 const theme = join(lesson, "theme.css");
 writeFileSync(join(out, "theme.css"), existsSync(theme) ? readFileSync(theme, "utf8") : "/* no theme.css in the lesson */\n");
 // The lesson's own pictures are copied; those of a shared word folder are loaded from it
 if (media && !story.words && existsSync(join(lesson, "images"))) cpSync(join(lesson, "images"), join(out, "images"), { recursive: true });
+// Riddle sounds belong to the lesson: only the ones in the game are copied
+for (const file of Object.values(riddles ?? {})) cpSync(join(lesson, file), join(out, file));
 
 // Words and sound lists go into data.js so no fetch is needed (fetch fails when the file is opened directly)
 const data = {
@@ -137,6 +160,7 @@ const data = {
   source: SOURCE,
   imageSource: media ? story.words ?? "" : "",
   words,
+  ...(riddles && { riddles }),
   syllables: soundList("syllables.json"),
   letters: soundList("letters.json"),
   soft: soundList("soft.json"), // soft consonants «ть», «ль»…, if already voiced
@@ -148,6 +172,6 @@ writeFileSync(join(out, "data.js"), `const GAME_DATA = ${JSON.stringify(data)};\
 console.log(`Готово: ${out}`);
 console.log(`Режим: ${mode}${story.words ? `, слова${media ? " и картинки" : ""} из lessons/${story.words}` : ""}` +
   (media ? "" : " (без картинок и звуков)"));
-console.log(`Слов: ${words.length}` + (media ? `, картинок: ${Object.keys(images).length}, ` +
+console.log(`${riddle ? "Загадок" : "Слов"}: ${words.length}` + (media ? `, картинок: ${Object.keys(images).length}, ` +
   `звуков из lessons/${SOURCE}: слогов ${Object.keys(data.syllables).length}, букв ${Object.keys(data.letters).length}, ` +
   `мягких ${Object.keys(data.soft).length}` : ""));

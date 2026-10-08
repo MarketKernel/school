@@ -1,0 +1,9 @@
+{
+  "title": "Сравнение чисел",
+  "description": "Какое число больше? Поставь знак <, > или =. 4 уровня: до 5, до 10, до 20 и до 100. 20 примеров, на каждый — 5 секунд.",
+  "subject": "Математика",
+  "icon": "⚖️",
+  "order": 25,
+  "build": "(cd ../math-drill/game && npm ci) && node ../math-drill/game/build_scripts/build.mjs .",
+  "publish": "build"
+}
