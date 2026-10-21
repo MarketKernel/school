@@ -1,0 +1,10 @@
+{
+  "title": "Скажи фразу по-английски",
+  "description": "Те же 300 фраз наоборот: читаем по-русски и говорим по-английски. Подсказка даёт послушать, как это звучит.",
+  "subject": "Английский",
+  "icon": "💬",
+  "order": 230,
+  "uses": ["english-phrases"],
+  "build": "(cd ../english-phrases/game && npm ci) && node ../english-phrases/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

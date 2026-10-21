@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<!-- The page lives in tools/, while sounds and lists are one level up: all paths are relative to lessons/english-phrases -->
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Проверка фраз</title>
+<link rel="icon" href="data:,">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 16px 16px 200px; background: #fafafa; color: #222; }
+  h2 { margin: 24px 0 10px; }
+  table { border-collapse: collapse; width: 100%; max-width: 1100px; background: #fff; }
+  td { border-bottom: 1px solid #eee; padding: 6px 8px; vertical-align: top; }
+  tr.bad td { background: #fee2e2; }
+  td.en { font-size: 18px; font-weight: 600; white-space: nowrap; }
+  td.ru { font-size: 16px; }
+  td small { display: block; color: #777; font-size: 12px; line-height: 1.35; }
+  td.btns { white-space: nowrap; width: 1%; }
+  button { font-size: 15px; padding: 4px 10px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+  button.on { background: #ef4444; border-color: #ef4444; color: #fff; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .hint { color: #666; max-width: 760px; }
+  #redo { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; padding: 12px 16px; background: #fff;
+          border-top: 1px solid #ddd; white-space: pre-wrap; font-size: 14px; }
+</style>
+</head>
+<body>
+<p class="hint">«▶» — послушать фразу по-английски, «▶ ru» — перевод. «✗» рядом — пометить неудачный звук:
+  внизу появится команда, чтобы переозвучить помеченные. Неверное ударение в переводе тоже повод его пометить.
+  Серым под фразой — другие варианты, которые засчитывает проверка речи. Пометки сохраняются в браузере.</p>
+<p id="summary" class="hint"></p>
+<div id="topics"></div>
+<pre id="redo"></pre>
+
+<script>
+// Same as slug() in lessons/english/tools/common.py and ../game/build_scripts/build.mjs
+const slug = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const KEY = "english-phrases-review";
+// Marked sounds: English phrases and Russian translations, by slug
+let saved;
+try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch { saved = {}; }
+const bad = { en: new Set(saved.en || []), ru: new Set(saved.ru || []) };
+let player = null;
+
+function play(path) {
+  player?.pause();
+  player = new Audio(`audio/${path}.mp3?t=${Date.now()}`);
+  player.play().catch(() => {});
+}
+
+function update() {
+  try { localStorage.setItem(KEY, JSON.stringify({ en: [...bad.en], ru: [...bad.ru] })); } catch {}
+  const lines = [];
+  if (bad.en.size) lines.push(`python3 tools/speak.py --redo ${[...bad.en].join(",")}`);
+  if (bad.ru.size) lines.push(`python3 tools/speak.py --ru --redo ${[...bad.ru].join(",")}`);
+  document.getElementById("redo").textContent = lines.join("\n") || "— пока ничего не помечено —";
+}
+
+function exists(url) {
+  return fetch(url, { method: "HEAD" }).then((r) => r.ok, () => false);
+}
+
+const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+(async () => {
+  const read = (name) => fetch(`data/${name}`).then((r) => r.text())
+    .then((t) => t.trim().split("\n").slice(1).map((l) => l.split("\t")));
+  const [topics, phrases] = await Promise.all([read("topics.tsv"), read("phrases.tsv")]);
+  let sounds = 0, soundsRu = 0;
+  for (const [key, icon, name] of topics) {
+    const h = document.createElement("h2");
+    h.textContent = `${icon} ${name}`;
+    const table = document.createElement("table");
+    const rows = phrases.filter((p) => p[0] === key);
+    const [has, hasRu] = await Promise.all([
+      Promise.all(rows.map((p) => exists(`audio/${slug(p[1])}.mp3`))),
+      Promise.all(rows.map((p) => exists(`audio/ru/${slug(p[1])}.mp3`))),
+    ]);
+    rows.forEach(([, en, ru, ruAlt = "", enAlt = ""], i) => {
+      const s = slug(en);
+      sounds += has[i];
+      soundsRu += hasRu[i];
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="btns"><button data-play="${s}" ${has[i] ? "" : "disabled"}>▶</button> <button data-bad="en">✗</button></td>` +
+        `<td class="en">${esc(en)}<small>${esc(enAlt.split("|").filter(Boolean).join(" · "))}</small></td>` +
+        `<td class="btns"><button data-play="ru/${s}" ${hasRu[i] ? "" : "disabled"}>▶ ru</button> <button data-bad="ru">✗</button></td>` +
+        `<td class="ru">${esc(ru)}<small>${esc(ruAlt.split("|").filter(Boolean).join(" · "))}</small></td>` +
+        `<td><small>${s}.mp3${has[i] ? "" : " · нет звука"}${hasRu[i] ? "" : " · нет перевода"}</small></td>`;
+      for (const btn of tr.querySelectorAll("[data-play]")) btn.onclick = () => play(btn.dataset.play);
+      const marks = tr.querySelectorAll("[data-bad]");
+      const paint = () => {
+        for (const m of marks) m.classList.toggle("on", bad[m.dataset.bad].has(s));
+        tr.classList.toggle("bad", bad.en.has(s) || bad.ru.has(s));
+      };
+      for (const m of marks) {
+        const set = bad[m.dataset.bad];
+        m.onclick = () => { set.has(s) ? set.delete(s) : set.add(s); paint(); update(); };
+      }
+      paint();
+      table.append(tr);
+    });
+    document.getElementById("topics").append(h, table);
+  }
+  document.getElementById("summary").textContent = `Фраз: ${phrases.length}, со звуком: ${sounds}, с озвученным переводом: ${soundsRu}.`;
+  update();
+})().catch((e) => {
+  document.body.prepend(`Не удалось прочитать data/*.tsv (${e.message}). Откройте страницу через сервер из папки lessons/english-phrases: ` +
+    "python3 -m http.server 8000 → http://localhost:8000/tools/review.html");
+});
+</script>
+</body>
+</html>

@@ -35,7 +35,8 @@ def load_envs():
 
 def slug(word: str) -> str:
     """File name for a word: «T-shirt» → «t-shirt», «ice cream» → «ice-cream».
-    Same as slug() in ../words.mjs and tools/review.html."""
+    Same as slug() in ../words.mjs and tools/review.html, and in lessons/english-phrases
+    (game/build_scripts/build.mjs, tools/review.html), whose speak.py imports this one."""
     return re.sub(r"[^a-z0-9]+", "-", word.lower()).strip("-")
 
 

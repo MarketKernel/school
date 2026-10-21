@@ -78,20 +78,27 @@ def provider_label(provider: str) -> str:
     return f"OpenAI, модель: {setting('EN_OPENAI_TTS_MODEL')}, голос: {setting('EN_OPENAI_TTS_VOICE')}"
 
 
-def synthesize(word: str, provider: str, api_key: str) -> bytes:
+def synthesize(text: str, provider: str, api_key: str, instructions: str = INSTRUCTIONS, language: str = "en",
+               eleven_voice: "str | None" = None, eleven_model: "str | None" = None,
+               openai_voice: "str | None" = None) -> bytes:
+    """Voices a word or a phrase with the EN_ settings, or with the given voice, model and language.
+    Also used by lessons/english-phrases/tools/speak.py (its Russian translations too)."""
     if provider == "elevenlabs":
-        # A capital letter and a period make ElevenLabs read a lone word as a finished sentence, not cut short
-        url = ELEVENLABS_URL.format(voice=setting("EN_ELEVENLABS_VOICE"))
-        body = {"text": word[:1].upper() + word[1:] + ".", "model_id": setting("EN_ELEVENLABS_MODEL"),
-                "language_code": "en"}
+        # A capital letter and a period make ElevenLabs read a lone word as a finished sentence, not cut short;
+        # a phrase keeps its own «!» or «?»
+        text = text[:1].upper() + text[1:]
+        if text[-1:] not in (".", "!", "?"):
+            text += "."
+        url = ELEVENLABS_URL.format(voice=eleven_voice or setting("EN_ELEVENLABS_VOICE"))
+        body = {"text": text, "model_id": eleven_model or setting("EN_ELEVENLABS_MODEL"), "language_code": language}
         headers = {"xi-api-key": api_key, "Content-Type": "application/json"}
     else:
         url = OPENAI_URL
-        body = {"model": setting("EN_OPENAI_TTS_MODEL"), "voice": setting("EN_OPENAI_TTS_VOICE"),
-                "input": word, "response_format": "mp3"}
+        body = {"model": setting("EN_OPENAI_TTS_MODEL"), "voice": openai_voice or setting("EN_OPENAI_TTS_VOICE"),
+                "input": text, "response_format": "mp3"}
         # instructions are supported only by gpt-4o-mini-tts and newer; tts-1 ignores them
         if not body["model"].startswith("tts-1"):
-            body["instructions"] = INSTRUCTIONS
+            body["instructions"] = instructions
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
     request = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers)
@@ -157,6 +164,42 @@ def list_voices(api_key: str):
     print("Голос для урока задаётся в .env: EN_ELEVENLABS_VOICE=<id>")
 
 
+def voice_all(todo: "list[tuple[str, str, Path]]", provider: str, api_key: str,
+              instructions: str = INSTRUCTIONS, **voice) -> "list[str]":
+    """Voices (name, text, file) items in parallel, printing progress. Returns the names that failed.
+    voice — language / eleven_voice / eleven_model / openai_voice for synthesize().
+    Also used by lessons/english-phrases/tools/speak.py."""
+    can_normalize = shutil.which("lame") is not None
+    if not can_normalize:
+        print("  lame не найден — громкость не выравниваем (brew install lame)")
+
+    def work(name: str, text: str, file: Path):
+        # On short text the service sometimes returns an empty file or silence — ask again
+        for _ in range(RETRIES_ON_EMPTY):
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_bytes(synthesize(text, provider, api_key, instructions, **voice))
+            try:
+                if file.stat().st_size and (not can_normalize or normalize(file) >= QUIET_DB):
+                    return
+            except subprocess.CalledProcessError:
+                pass  # lame couldn't read the response — corrupt file
+        file.unlink(missing_ok=True)
+        raise RuntimeError(f"{RETRIES_ON_EMPTY} раза пришла тишина или битый файл — попробуйте позже: --redo {name}")
+
+    failed = []
+    with ThreadPoolExecutor(WORKERS[provider]) as pool:
+        futures = {pool.submit(work, *item): item[0] for item in todo}
+        for n, future in enumerate(as_completed(futures), 1):
+            name = futures[future]
+            try:
+                future.result()
+                print(f"  [{n}/{len(todo)}] {name}")
+            except Exception as e:
+                failed.append(name)
+                print(f"  [{n}/{len(todo)}] {name} — ОШИБКА: {e}")
+    return failed
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", type=Path, default=FOLDER / "audio", help="папка для звуков")
@@ -207,35 +250,7 @@ def main():
             print(f"  {r['word']} -> audio/{r['slug']}.mp3")
         return
 
-    can_normalize = shutil.which("lame") is not None
-    if not can_normalize:
-        print("  lame не найден — громкость не выравниваем (brew install lame)")
-
-    def work(row):
-        file = args.out / f"{row['slug']}.mp3"
-        # On short text the service sometimes returns an empty file or silence — ask again
-        for _ in range(RETRIES_ON_EMPTY):
-            file.write_bytes(synthesize(row["word"], provider, api_key))
-            try:
-                if file.stat().st_size and (not can_normalize or normalize(file) >= QUIET_DB):
-                    return
-            except subprocess.CalledProcessError:
-                pass  # lame couldn't read the response — corrupt file
-        file.unlink(missing_ok=True)
-        raise RuntimeError(f"{RETRIES_ON_EMPTY} раза пришла тишина или битый файл — попробуйте позже: --redo {row['word']}")
-
-    failed = []
-    with ThreadPoolExecutor(WORKERS[provider]) as pool:
-        futures = {pool.submit(work, row): row["word"] for row in todo}
-        for n, future in enumerate(as_completed(futures), 1):
-            word = futures[future]
-            try:
-                future.result()
-                print(f"  [{n}/{len(todo)}] {word}")
-            except Exception as e:
-                failed.append(word)
-                print(f"  [{n}/{len(todo)}] {word} — ОШИБКА: {e}")
-
+    failed = voice_all([(r["word"], r["word"], args.out / f"{r['slug']}.mp3") for r in todo], provider, api_key)
     print(f"Готово: озвучено {len(todo) - len(failed)}, ошибок: {len(failed)}"
           + (f". Повторить: python3 tools/speak.py --redo {','.join(failed)}" if failed else ""))
 
