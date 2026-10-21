@@ -37,6 +37,12 @@ button {
 }
 button:disabled { cursor: default; }
 [hidden] { display: none !important; }
+/* Elements of one code file only (body data-code, set by the build) */
+body:not([data-mic]) .only-mic,
+body:not([data-code="assemble"]) .only-assemble,
+body:not([data-code="tenses"]) .only-tenses,
+body:not([data-mode="tenses-listen"]) .only-tenses-listen,
+body:not([data-mode="tenses-say"]) .only-tenses-say { display: none !important; }
 
 /* ---------- Topics and score ---------- */
 
@@ -125,6 +131,89 @@ main {
 }
 .answer.ok { color: var(--ok); background: var(--ok-bg); }
 .heard { min-height: 1.3em; font-size: 18px; color: var(--muted); overflow-wrap: anywhere; }
+
+.question.muted { color: var(--line); letter-spacing: 0.2em; }
+
+/* ---------- Tenses: the time buttons, the target time, the clue ---------- */
+
+.times { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 128px;
+  padding: 14px 18px 12px;
+  font-size: 40px;
+  line-height: 1;
+  background: #fff;
+  border: 4px solid var(--line);
+  border-radius: 24px;
+  box-shadow: 0 5px 0 var(--line);
+  transition: transform 0.1s;
+}
+.time span { font-size: 22px; font-weight: 900; }
+.time:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 2px 0 var(--line); }
+.time-past { border-color: #b9a7f0; }
+.time-now { border-color: #8fd6a9; }
+.time-future { border-color: #8cc8f2; }
+.time.wrong { opacity: 0.35; animation: shake 0.4s ease-in-out; }
+.time.right { background: var(--ok-bg); border-color: var(--ok); animation: pop 0.35s ease-out; }
+.time:disabled { cursor: default; }
+
+.target { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
+.time-badge { padding: 6px 16px; font-size: 26px; font-weight: 900; border-radius: 999px; }
+.time-badge.time-past { background: #ece6ff; }
+.time-badge.time-now { background: #ddf6e6; }
+.time-badge.time-future { background: #dff0fd; }
+.target-ru { font-size: 22px; color: var(--muted); }
+.target-label { font-size: 18px; font-weight: 800; color: var(--muted); }
+.clue { min-height: 1.3em; font-size: 18px; color: var(--ok); font-weight: 800; }
+
+/* ---------- Assemble: the answer line and the word bank ---------- */
+
+[data-code="assemble"] .question { font-size: 28px; color: var(--muted); }
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 8px;
+  border-radius: 20px;
+}
+.line.ok { background: var(--ok-bg); }
+.line.ok .card-word { border-color: var(--ok); color: var(--ok); }
+.slot {
+  width: 84px;
+  height: 56px;
+  border: 3px dashed var(--line);
+  border-radius: 16px;
+}
+.bank {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  max-width: 760px;
+}
+.card-word {
+  min-width: 64px;
+  min-height: 56px;
+  padding: 8px 18px;
+  font-size: 26px;
+  font-weight: 800;
+  background: #fff;
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 4px 0 var(--line);
+  transition: transform 0.1s, opacity 0.15s;
+}
+.card-word:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+.card-word.used { opacity: 0.25; box-shadow: none; }
+.card-word.wrong { border-color: var(--bad); color: var(--bad); animation: shake 0.4s ease-in-out; }
+.line .card-word { animation: pop 0.25s ease-out; }
+.line .card-word.wrong { animation: shake 0.4s ease-in-out; }
 
 /* ---------- Listen / speak ---------- */
 
@@ -222,6 +311,7 @@ main {
 /* ---------- Animations ---------- */
 
 @keyframes pop { 0% { transform: scale(0.85); } 70% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 @keyframes hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-14%); } }
 @keyframes nudge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.07); } }
 @keyframes beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
@@ -253,6 +343,17 @@ main {
   .question { font-size: 30px; }
   .answer { font-size: 22px; padding: 4px 12px; }
   .heard { font-size: 15px; }
+  [data-code="assemble"] .question { font-size: 20px; }
+  .times { gap: 8px; }
+  .time { min-width: 96px; padding: 10px 10px 8px; font-size: 32px; }
+  .time span { font-size: 18px; }
+  .time-badge { font-size: 20px; }
+  .target-ru { font-size: 17px; }
+  .clue { font-size: 15px; }
+  .line { gap: 6px; min-height: 52px; padding: 4px; }
+  .slot { width: 60px; height: 46px; }
+  .bank { gap: 8px; }
+  .card-word { min-width: 48px; min-height: 46px; padding: 6px 12px; font-size: 20px; }
   .actions { gap: 18px; }
   .round { font-size: 17px; }
   .round-icon { width: 78px; height: 78px; font-size: 36px; }

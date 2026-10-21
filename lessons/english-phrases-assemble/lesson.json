@@ -1,0 +1,10 @@
+{
+  "title": "Собери фразу",
+  "description": "Слушаем английскую фразу и собираем её из слов — по порядку. Перевод подсказывает смысл, а 💡 — следующее слово.",
+  "subject": "Английский",
+  "icon": "🧩",
+  "order": 240,
+  "uses": ["english-phrases"],
+  "build": "(cd ../english-phrases/game && npm ci) && node ../english-phrases/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

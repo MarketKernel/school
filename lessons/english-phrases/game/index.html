@@ -10,8 +10,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
-<!-- data-mode: to-russian (hear English, say Russian) or to-english (read Russian, say English); set by the build -->
-<body data-mode="{{mode}}">
+<!-- Set by the build: data-mode — game.json mode; data-code — its code file: speak (to-russian, to-english),
+     assemble or tenses (tenses-listen, tenses-say); data-mic — the answer is spoken. Elements marked only-<code>,
+     only-<mode> or only-mic are shown in those lessons only (style.css). -->
+<body data-mode="{{mode}}" data-code="{{code}}"{{mic}}>
 <header>
   <nav id="topics" class="topics" aria-label="Темы"></nav>
   <div id="score" class="score" title="Очки: сколько фраз удалось перевести" aria-live="polite"></div>
@@ -21,15 +23,26 @@
   <section class="board">
     <div id="task" class="task"></div>
     <div id="question" class="question"></div>
+    <div id="target" class="target only-tenses-say"></div>
+    <div id="line" class="line only-assemble" aria-label="Фраза"></div>
     <div id="answer" class="answer" hidden></div>
-    <div id="heard" class="heard" aria-live="polite"></div>
+    <div id="clue" class="clue only-tenses"></div>
+    <div id="heard" class="heard only-mic" aria-live="polite"></div>
   </section>
+
+  <section class="times only-tenses-listen" aria-label="Когда?">
+    <button id="time-past" class="time time-past" title="Вчера (1)">⏪<span>Вчера</span></button>
+    <button id="time-now" class="time time-now" title="Сейчас (2)">🟢<span>Сейчас</span></button>
+    <button id="time-future" class="time time-future" title="Завтра (3)">⏩<span>Завтра</span></button>
+  </section>
+
+  <section id="bank" class="bank only-assemble" aria-label="Слова"></section>
 
   <section class="actions">
     <button id="listen" class="round listen" title="Послушать фразу (пробел)">
       <span class="round-icon" aria-hidden="true">🔊</span><span class="round-label">Послушай</span>
     </button>
-    <button id="speak" class="round speak" title="Сказать перевод (Enter)">
+    <button id="speak" class="round speak only-mic" title="Сказать перевод (Enter)">
       <span class="round-icon" aria-hidden="true">🎤</span><span id="speak-label" class="round-label">Скажи</span>
     </button>
     <button id="hint" class="round hint-btn" title="Подсказка (H)">
@@ -40,11 +53,11 @@
   <p id="message" role="status"></p>
 
   <section class="controls">
-    <button id="manual-ok" class="btn" hidden>👍 Получилось</button>
+    <button id="manual-ok" class="btn only-mic" hidden>👍 Получилось</button>
     <button id="next" class="btn">Другая фраза</button>
   </section>
 
-  <p id="note" class="note" hidden></p>
+  <p id="note" class="note only-mic" hidden></p>
 </main>
 
 <div id="overlay" class="overlay" hidden>
@@ -60,6 +73,7 @@
 
 <!-- Classic scripts, not modules: this way the game also opens by double-click, without a server -->
 <script src="data.js"></script>
-<script src="main.js"></script>
+<script src="common.js"></script>
+<script src="{{code}}.js"></script>
 </body>
 </html>

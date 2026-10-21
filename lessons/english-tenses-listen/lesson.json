@@ -1,0 +1,10 @@
+{
+  "title": "Вчера, сейчас или завтра?",
+  "description": "Английские времена на слух: слушаем предложение и угадываем, когда это было — вчера, сейчас или завтра.",
+  "subject": "Английский",
+  "icon": "⏳",
+  "order": 250,
+  "uses": ["english-tenses"],
+  "build": "(cd ../english-phrases/game && npm ci) && node ../english-phrases/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

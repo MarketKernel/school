@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<!-- The page lives in tools/, while sounds and lists are one level up: all paths are relative to lessons/english-tenses -->
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Проверка времён</title>
+<link rel="icon" href="data:,">
+<style>
+  body { font-family: system-ui, sans-serif; margin: 16px 16px 200px; background: #fafafa; color: #222; }
+  h2 { margin: 24px 0 10px; }
+  table { border-collapse: collapse; width: 100%; max-width: 1200px; background: #fff; }
+  th { text-align: left; font-weight: 600; color: #777; padding: 6px 8px; }
+  td { border-bottom: 1px solid #eee; padding: 6px 8px; vertical-align: top; }
+  td.bad { background: #fee2e2; }
+  td b { font-size: 16px; }
+  td small { display: block; color: #777; font-size: 12px; }
+  button { font-size: 14px; padding: 3px 8px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+  button.on { background: #ef4444; border-color: #ef4444; color: #fff; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .hint { color: #666; max-width: 760px; }
+  #redo { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; padding: 12px 16px; background: #fff;
+          border-top: 1px solid #ddd; white-space: pre-wrap; font-size: 14px; }
+</style>
+</head>
+<body>
+<p class="hint">«▶» — послушать предложение, «✗» — пометить неудачный звук: внизу появится команда, чтобы переозвучить
+  помеченные. Особенно важно, чтобы были слышны окончание «-ed», «am / is / are … -ing» и «will». Пометки сохраняются в браузере.</p>
+<p id="summary" class="hint"></p>
+<div id="topics"></div>
+<pre id="redo"></pre>
+
+<script>
+// Same as slug() in lessons/english/tools/common.py and lessons/english-phrases/game/build_scripts/build.mjs
+const slug = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const KEY = "english-tenses-review";
+let bad;
+try { bad = new Set(JSON.parse(localStorage.getItem(KEY)) || []); } catch { bad = new Set(); }
+let player = null;
+
+function play(s) {
+  player?.pause();
+  player = new Audio(`audio/${s}.mp3?t=${Date.now()}`);
+  player.play().catch(() => {});
+}
+
+function update() {
+  try { localStorage.setItem(KEY, JSON.stringify([...bad])); } catch {}
+  document.getElementById("redo").textContent =
+    bad.size ? `python3 tools/speak.py --redo ${[...bad].join(",")}` : "— пока ничего не помечено —";
+}
+
+const exists = (url) => fetch(url, { method: "HEAD" }).then((r) => r.ok, () => false);
+const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+
+(async () => {
+  const read = (name) => fetch(`data/${name}`).then((r) => r.text())
+    .then((t) => t.trim().split("\n").slice(1).map((l) => l.split("\t")));
+  const [topics, rows] = await Promise.all([read("topics.tsv"), read("sentences.tsv")]);
+  let sounds = 0;
+  for (const [key, icon, name] of topics) {
+    const h = document.createElement("h2");
+    h.textContent = `${icon} ${name}`;
+    const table = document.createElement("table");
+    table.innerHTML = "<tr><th>⏪ Вчера</th><th>🟢 Сейчас</th><th>⏩ Завтра</th></tr>";
+    for (const [, ...cells] of rows.filter((r) => r[0] === key)) {
+      const tr = document.createElement("tr");
+      for (let i = 0; i < 3; i++) {
+        const s = slug(cells[i]);
+        const has = await exists(`audio/${s}.mp3`);
+        sounds += has;
+        const td = document.createElement("td");
+        td.innerHTML = `<button data-play ${has ? "" : "disabled"}>▶</button> <button data-bad>✗</button> ` +
+          `<b>${esc(cells[i])}</b><small>${esc(cells[i + 3] || "")}${has ? "" : " · нет звука"}</small>`;
+        td.querySelector("[data-play]").onclick = () => play(s);
+        const mark = td.querySelector("[data-bad]");
+        const paint = () => { mark.classList.toggle("on", bad.has(s)); td.classList.toggle("bad", bad.has(s)); };
+        mark.onclick = () => { bad.has(s) ? bad.delete(s) : bad.add(s); paint(); update(); };
+        paint();
+        tr.append(td);
+      }
+      table.append(tr);
+    }
+    document.getElementById("topics").append(h, table);
+  }
+  document.getElementById("summary").textContent = `Глаголов: ${rows.length}, предложений: ${rows.length * 3}, со звуком: ${sounds}.`;
+  update();
+})().catch((e) => {
+  document.body.prepend(`Не удалось прочитать data/*.tsv (${e.message}). Откройте страницу через сервер из папки lessons/english-tenses: ` +
+    "python3 -m http.server 8000 → http://localhost:8000/tools/review.html");
+});
+</script>
+</body>
+</html>

@@ -27,13 +27,16 @@
 | 👂 Найди картинку — услышь слово и выбери одну из четырёх картинок | Английский | [lessons/english-pictures](lessons/english-pictures) |
 | 🎧 Переведи на русский — 300 популярных фраз: послушай по-английски и скажи по-русски | Английский | [lessons/english-phrases-ru](lessons/english-phrases-ru) |
 | 💬 Скажи фразу по-английски — те же фразы наоборот: прочитай по-русски и скажи по-английски | Английский | [lessons/english-phrases-en](lessons/english-phrases-en) |
+| 🧩 Собери фразу — послушай английскую фразу и собери её из слов | Английский | [lessons/english-phrases-assemble](lessons/english-phrases-assemble) |
+| ⏳ Вчера, сейчас или завтра? — английские времена на слух | Английский | [lessons/english-tenses-listen](lessons/english-tenses-listen) |
+| 🔁 Скажи вчера и завтра — скажи предложение в другом времени | Английский | [lessons/english-tenses-say](lessons/english-tenses-say) |
 | 🧙 Мерлин читает — напиши текст, и браузер прочитает его вслух; или продиктуй — и он запишет | Помощники | [lessons/merlin](lessons/merlin) |
 
 Уроки чтения собираются из общего движка [lessons/read-game](lessons/read-game) (два режима: собрать слово из карточек или прочитать вслух), а звуки букв и слогов берут из общей папки [lessons/russian](lessons/russian). Слова и картинки из «Гарри Поттера» — в общей папке [lessons/potter](lessons/potter), их используют два урока. Новый урок чтения — это папка с `game.json` (и своими словами или ссылкой на общие), без своего кода.
 
 Тренажёры на счёт и на дроби собираются из общего движка [lessons/math-drill](lessons/math-drill): новый тренажёр — это папка с `lesson.json` и `drill.json`, без своего кода.
 
-Английские уроки берут слова, картинки и звуки из общей папки [lessons/english](lessons/english) и ничего не копируют (см. «Общие материалы» ниже). Уроки с фразами собираются из общей папки [lessons/english-phrases](lessons/english-phrases): в ней 300 фраз с переводом, их звуки и движок игры, а урок — это `lesson.json` и `game.json` с направлением перевода.
+Английские уроки берут слова, картинки и звуки из общей папки [lessons/english](lessons/english) и ничего не копируют (см. «Общие материалы» ниже). Уроки с фразами собираются из общей папки [lessons/english-phrases](lessons/english-phrases): в ней 300 фраз с переводом, их звуки и движок игры, а урок — это `lesson.json` и `game.json` с режимом. Этим же движком собираются уроки времён; их 100 глаголов в трёх временах со звуками лежат в [lessons/english-tenses](lessons/english-tenses).
 
 ## Как устроено
 
@@ -123,7 +126,7 @@ node build_scripts/build.mjs --no-build   # пересобрать главну�
 - Урок пишет в своём `lesson.json` `"uses": ["<папка>"]` и загружает файлы по относительному пути: `../<папка>/…` на сайте, а из локальной сборки — до `lessons/`: `../../../<папка>/…` из `lessons/<урок>/game/build/`, `../../<папка>/…` из `lessons/<урок>/build/`.
 - Service worker сохраняет общую папку вместе с каждым уроком, который её указал, поэтому урок работает без интернета.
 
-Примеры — [lessons/english](lessons/english): её используют «Скажи по-английски» и «Найди картинку»; [lessons/russian](lessons/russian) — звуки букв и слогов для всех уроков чтения; [lessons/potter](lessons/potter) — слова и картинки для «Волшебных слов» и «Прочитай вслух»; [lessons/english-phrases](lessons/english-phrases) — фразы и их звуки для «Переведи на русский» и «Скажи фразу по-английски».
+Примеры — [lessons/english](lessons/english): её используют «Скажи по-английски» и «Найди картинку»; [lessons/russian](lessons/russian) — звуки букв и слогов для всех уроков чтения; [lessons/potter](lessons/potter) — слова и картинки для «Волшебных слов» и «Прочитай вслух»; [lessons/english-phrases](lessons/english-phrases) — фразы и их звуки для «Переведи на русский», «Скажи фразу по-английски» и «Собери фразу»; [lessons/english-tenses](lessons/english-tenses) — предложения и звуки для двух уроков времён.
 
 ## Приложение (PWA)
 

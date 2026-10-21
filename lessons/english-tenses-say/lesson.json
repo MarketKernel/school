@@ -1,0 +1,10 @@
+{
+  "title": "Скажи вчера и завтра",
+  "description": "Английские времена вслух: предложение про «сейчас» говорим про «вчера» или «завтра» — и наоборот. Браузер слушает и проверяет.",
+  "subject": "Английский",
+  "icon": "🔁",
+  "order": 260,
+  "uses": ["english-tenses"],
+  "build": "(cd ../english-phrases/game && npm ci) && node ../english-phrases/game/build_scripts/build.mjs .",
+  "publish": "build"
+}
