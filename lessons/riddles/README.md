@@ -24,7 +24,7 @@ node lessons/read-game/game/build_scripts/build.mjs lessons/riddles && open less
 | `data/source.txt` | исходный текст: строки загадки, под ними ответ в скобках «(Молния)»; строка «Загадки …» между загадками — название раздела |
 | `data/riddles.json` | загадки, подготовленные к озвучке (делает `tools/prepare.py`); игра берёт из него `id` и `answer` |
 | `data/words_split.txt` | слова отгадок по слогам — делает `russian/tools/syllables.py`, по нему озвучиваются недостающие слоги |
-| `audio/<id>.mp3` | озвученные загадки (делает `tools/voice.py`); отгадки не озвучиваются — ребёнок собирает их сам |
+| `audio/<id>.mp3` | озвученные загадки (делает `tools/voice.py`, ElevenLabs); отгадки не озвучиваются — ребёнок собирает их сам |
 
 Поля загадки в `riddles.json`:
 
@@ -34,7 +34,7 @@ node lessons/read-game/game/build_scripts/build.mjs lessons/riddles && open less
 | `section` | раздел из исходника |
 | `lines` | текст по строкам стиха, как его покажем на экране: с «ё», «—» и исправленными опечатками |
 | `answer` | ответ |
-| `tts` | текст для Yandex SpeechKit с [разметкой](https://aistudio.yandex.ru/docs/ru/speechkit/tts/markup/tts-markup): `+` перед ударной гласной там, где синтезатор может ошибиться («сто+ит», «отл+ого»), `<[small]>` — пауза в конце строки без знака препинания |
+| `tts` | текст для озвучки с [разметкой SpeechKit](https://aistudio.yandex.ru/docs/ru/speechkit/tts/markup/tts-markup): `+` перед ударной гласной там, где синтезатор может ошибиться («сто+ит», «отл+ого»), `<[small]>` — пауза в конце строки без знака препинания. Для ElevenLabs `voice.py` сам превращает `+` в знак ударения над гласной («стои́т»), а `<[small]>` — в перенос строки |
 | `fixes` | что модель поменяла по сравнению с исходником — стоит просмотреть |
 | `source` | загадка как в `source.txt`: по нему скрипт замечает, что исходник изменился |
 
@@ -56,16 +56,18 @@ python3 lessons/riddles/tools/prepare.py --force            # заново вс�
 
 ## Озвучка — `tools/voice.py`
 
-Читает поле `tts` каждой загадки из `riddles.json` и озвучивает его через Yandex SpeechKit (API v1). Ключ — `YANDEX_API_KEY` в `.env`: API-ключ сервисного аккаунта с ролью `ai.speechkit-tts.user`. Звуки: `audio/<id>.mp3`, ответы не озвучиваются. Громкость выравнивается так же, как у слогов (нужен `lame`: `brew install lame`).
+Читает поле `tts` каждой загадки из `riddles.json` и озвучивает его. Звуки: `audio/<id>.mp3`, ответы не озвучиваются. Громкость выравнивается так же, как у слогов (нужен `lame`: `brew install lame`).
 
-Настройки в `.env`: `YANDEX_VOICE` (по умолчанию `filipp` — выбран на слух; в API v1 есть ещё `ermil`, `zahar`, `alena`, `jane`, `marina`, `omazh`), `YANDEX_EMOTION` (`good`), `YANDEX_SPEED` (`0.9` — чуть медленнее обычного).
+- **ElevenLabs** (по умолчанию) — голос уроков чтения Olga Orlova (`ELEVENLABS_VOICE`), модель `eleven_multilingual_v2` (`RIDDLES_ELEVENLABS_MODEL`), со знаками ударения из `tts`. Выбрана на слух: из flash v2.5 и multilingual v2, с ударениями и без, лучше звучала multilingual v2 с ударениями. Ключ — `ELEVENLABS_API_KEY`. Все 33 загадки — около 3 400 символов.
+- **Yandex SpeechKit** (`--provider yandex` или `RIDDLES_TTS_PROVIDER=yandex`) — так загадки были озвучены сначала. Ключ — `YANDEX_API_KEY`: API-ключ сервисного аккаунта с ролью `ai.speechkit-tts.user`. Настройки: `YANDEX_VOICE` (`filipp`; в API v1 есть ещё `ermil`, `zahar`, `alena`, `jane`, `marina`, `omazh`), `YANDEX_EMOTION` (`good`), `YANDEX_SPEED` (`0.9`).
 
 ```sh
 python3 lessons/riddles/tools/voice.py --dry-run                # что будет озвучено и сколько символов
 python3 lessons/riddles/tools/voice.py --redo beryoza           # одна загадка
 python3 lessons/riddles/tools/voice.py                          # всё, чего ещё нет
-python3 lessons/riddles/tools/voice.py --redo beryoza --compare filipp,ermil,alena,jane
-    # одна загадка разными голосами в compare/<голос>/ — послушать и выбрать; audio/ не трогает
+python3 lessons/riddles/tools/voice.py --redo beryoza --compare eleven_flash_v2_5,eleven_multilingual_v2
+    # одна загадка разными моделями в compare/<модель>/ — послушать и выбрать; audio/ не трогает
+    # --plain — без знаков ударения; --provider yandex --compare filipp,ermil — голоса Yandex
 ```
 
-Если синтезатор ошибся в ударении, поправьте `+` в `tts` в `riddles.json` и переозвучьте загадку через `--redo <id>`.
+Если синтезатор ошибся в ударении, поправьте или добавьте `+` в `tts` в `riddles.json` и переозвучьте загадку через `--redo <id>`.
