@@ -1,0 +1,9 @@
+{
+  "title": "Волшебный бильярд",
+  "description": "Тысяча шариков вылетает из одной точки и отскакивает от бортиков. В овале они снова встречаются, а на стадионе разбегаются кто куда.",
+  "subject": "Чудеса физики",
+  "icon": "🎱",
+  "order": 501,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

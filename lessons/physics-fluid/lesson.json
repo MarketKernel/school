@@ -1,0 +1,9 @@
+{
+  "title": "Жидкие краски",
+  "description": "Проведи пальцем — и разноцветные краски закрутятся в водовороты, как чернила в воде. Настоящие уравнения жидкости, посчитанные видеокартой.",
+  "subject": "Чудеса физики",
+  "icon": "🎨",
+  "order": 519,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

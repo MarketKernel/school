@@ -1,0 +1,9 @@
+{
+  "title": "Скрытые измерения",
+  "description": "Радужная фигура Калаби — Яу: так математики рисуют крошечные свёрнутые измерения, о которых мечтает теория струн.",
+  "subject": "Чудеса физики",
+  "icon": "🌀",
+  "order": 517,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

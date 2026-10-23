@@ -1,0 +1,9 @@
+{
+  "title": "Батут пространства",
+  "description": "Звезда продавливает пространство, как тяжёлый мяч — батут, а планеты катаются вокруг неё, как шарики в воронке. Запускай свои планеты!",
+  "subject": "Чудеса физики",
+  "icon": "🪐",
+  "order": 515,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

@@ -1,0 +1,9 @@
+{
+  "title": "Две щели",
+  "description": "Волна проходит сквозь две щели и рисует на экране полоски. А потом по одному летят электроны — и складываются в такие же полоски!",
+  "subject": "Чудеса физики",
+  "icon": "🔦",
+  "order": 506,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

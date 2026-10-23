@@ -1,0 +1,9 @@
+{
+  "title": "Четырёхмерный куб",
+  "description": "Тессеракт — куб из четырёх измерений. Мы видим только его тень, и она всё время выворачивается наизнанку.",
+  "subject": "Чудеса физики",
+  "icon": "🧊",
+  "order": 518,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

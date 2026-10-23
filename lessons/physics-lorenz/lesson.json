@@ -1,0 +1,9 @@
+{
+  "title": "Бабочка Лоренца",
+  "description": "Тысячи точек вылетают из одного места и сначала летят вместе. А потом расползаются по двум крыльям волшебной бабочки — так устроена погода.",
+  "subject": "Чудеса физики",
+  "icon": "🦋",
+  "order": 503,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

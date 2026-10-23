@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- The title, icon and scene placeholders are filled from the lesson's lesson.json and scene.json (build_scripts/build.mjs) -->
+<title>__TITLE__</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>__ICON__</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-scene="__SCENE__">
+<!-- The whole screen is the scene; the panels float over it -->
+<canvas id="stage" class="stage"></canvas>
+
+<header class="top">
+  <div class="heading">
+    <h1 class="title"><span aria-hidden="true">__ICON__</span> __TITLE__</h1>
+    <p id="question" class="question"></p>
+  </div>
+  <button id="about-open" class="chip round" title="Что тут происходит?" aria-label="Что тут происходит?">?</button>
+</header>
+
+<div id="readout" class="readout" aria-live="polite" hidden></div>
+<p id="hint" class="hint" hidden></p>
+<p id="no-gl" class="no-gl" hidden>Этот браузер не умеет рисовать трёхмерную графику (WebGL 2), а без неё сцена не появится. Попробуйте открыть урок в свежем Chrome, Safari или Firefox.</p>
+
+<nav id="controls" class="controls" aria-label="Управление"></nav>
+
+<div id="about" class="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="about-title">
+    <div class="card-icon" aria-hidden="true">__ICON__</div>
+    <h2 id="about-title">Что тут происходит?</h2>
+    <div id="about-text" class="about-text"></div>
+    <button id="about-close" class="btn primary">Понятно!</button>
+  </div>
+</div>
+
+<!-- Classic scripts, not modules: this way the scene also opens by double-click, without a server -->
+<script src="data.js"></script>
+<script src="common.js"></script>
+<script src="__SCENE__.js"></script>
+</body>
+</html>

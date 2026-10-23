@@ -1,0 +1,9 @@
+{
+  "title": "Тысяча маятников",
+  "description": "Тысяча двойных маятников стартуют почти одинаково и сначала качаются как один. А через несколько секунд разлетаются радугой кто куда.",
+  "subject": "Чудеса физики",
+  "icon": "🌈",
+  "order": 502,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

@@ -1,0 +1,9 @@
+{
+  "title": "Поющая струна",
+  "description": "Оттяни струну и отпусти: она дрожит и поёт, а внизу видно, из каких простых волн-«обертонов» сложен её звук.",
+  "subject": "Чудеса физики",
+  "icon": "🎻",
+  "order": 516,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

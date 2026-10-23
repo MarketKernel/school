@@ -1,0 +1,303 @@
+/* Physics scenes: a full-screen canvas with soft panels floating over it.
+   The scene is a dark night window, so glowing particles and waves stand out; the panels and the card keep the
+   warm pastel colours and the Nunito font of the other lessons. */
+
+:root {
+  --night: #15122b;        /* page behind the canvas */
+  --panel: rgba(28, 23, 56, 0.72);
+  --panel-border: rgba(255, 255, 255, 0.16);
+  --light: #fdf6ec;        /* text on the dark panels */
+  --dim: #c9c0e6;
+  --main: #ffb86b;         /* warm apricot: main button, active choice, slider */
+  --main-dark: #e8954a;
+  --ink: #3d2b2f;          /* text on the cream card */
+  --muted: #8b7576;
+  --cream: #fff8ec;
+  --cream-border: #eadfcd;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--night);
+  color: var(--light);
+  font-family: "Nunito", ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* ---------- Panels over the scene ---------- */
+
+.top {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: calc(12px + env(safe-area-inset-left));
+  right: calc(12px + env(safe-area-inset-right));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  pointer-events: none;
+}
+.top > * { pointer-events: auto; }
+
+.heading {
+  max-width: min(560px, calc(100% - 60px));
+  padding: 8px 16px 10px;
+  border-radius: 20px;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.question {
+  margin: 2px 0 0;
+  color: var(--dim);
+  font-size: 15px;
+  line-height: 1.35;
+}
+.question:empty { display: none; }
+
+.chip {
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  transition: transform 0.1s, background 0.15s;
+}
+.chip:hover { background: rgba(48, 40, 90, 0.85); }
+.chip:active { transform: translateY(2px); }
+.chip.round { padding: 0; font-size: 22px; font-weight: 900; }
+.chip.primary { background: var(--main); border-color: var(--main-dark); color: var(--ink); }
+.chip.primary:hover { background: #ffc583; }
+.chip.on { background: var(--main); border-color: var(--main-dark); color: var(--ink); }
+.chip:disabled { opacity: 0.45; cursor: default; transform: none; }
+
+.readout {
+  position: fixed;
+  top: calc(72px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
+  max-width: 46vw;
+  padding: 8px 14px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.45;
+  white-space: pre-line;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.hint {
+  position: fixed;
+  left: 50%;
+  bottom: 92px; /* common.ts moves it just above the controls */
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(255, 248, 236, 0.92);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 800;
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.6s;
+}
+.hint.fade { opacity: 0; }
+
+.no-gl {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100% - 32px));
+  margin: 0;
+  padding: 20px 24px;
+  border-radius: 24px;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+/* ---------- Controls: bottom bar, clear of the 🏠 button in the bottom-left corner ---------- */
+
+.controls {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  padding: 0 172px; /* clear of the 🏠 «Все уроки» button on both sides, so the bar stays centred */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.controls > * { pointer-events: auto; }
+
+.choice {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 3px;
+  gap: 3px;
+  border-radius: 24px;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.choice .chip {
+  min-height: 40px;
+  padding: 0 14px;
+  background: transparent;
+  border-color: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.choice .chip.on { background: var(--main); border-color: var(--main-dark); color: var(--ink); }
+
+.slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 2px solid var(--panel-border);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 16px;
+  font-weight: 800;
+}
+.slider input {
+  width: 150px;
+  height: 28px;
+  margin: 0;
+  accent-color: var(--main);
+  cursor: pointer;
+}
+.slider output {
+  min-width: 3ch;
+  color: var(--main);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- «Что тут происходит?» ---------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 8, 25, 0.55);
+}
+.overlay[hidden] { display: none; }
+
+.card {
+  width: min(540px, 100%);
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 22px 26px 24px;
+  border-radius: 28px;
+  background: var(--cream);
+  border: 3px solid var(--cream-border);
+  box-shadow: 0 8px 0 var(--cream-border);
+  color: var(--ink);
+  text-align: center;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.card-icon { font-size: 52px; line-height: 1.1; }
+.card h2 { margin: 6px 0 10px; font-size: 26px; font-weight: 900; }
+.about-text { text-align: left; font-size: 18px; line-height: 1.5; }
+.about-text p { margin: 0 0 12px; }
+
+.btn {
+  min-height: 52px;
+  padding: 0 28px;
+  margin-top: 6px;
+  border-radius: 999px;
+  border: 3px solid var(--cream-border);
+  background: #fff;
+  font-size: 19px;
+  font-weight: 900;
+  box-shadow: 0 4px 0 var(--cream-border);
+}
+.btn.primary { background: var(--main); border-color: var(--main-dark); box-shadow: 0 4px 0 var(--main-dark); }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--main-dark); }
+
+/* ---------- Phones ---------- */
+
+@media (max-width: 700px) {
+  .title { font-size: 17px; }
+  .question { font-size: 14px; }
+  .heading { padding: 6px 12px 8px; }
+  .readout { top: calc(66px + env(safe-area-inset-top)); font-size: 13px; padding: 6px 10px; }
+  /* the 🏠 button is a 48px circle on the left: keep the bar to its right */
+  .controls { padding: 0 12px 0 72px; justify-content: flex-start; gap: 6px; }
+  .chip { min-height: 44px; font-size: 16px; padding: 0 12px; }
+  .choice .chip { min-height: 38px; padding: 0 10px; }
+  .slider { min-height: 44px; padding: 0 12px; font-size: 14px; gap: 8px; }
+  .slider input { width: 110px; }
+  .hint { font-size: 15px; }
+  .about-text { font-size: 17px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip, .hint { transition: none; }
+}

@@ -1,0 +1,9 @@
+{
+  "title": "Три звезды",
+  "description": "Три звезды притягивают друг друга и кружатся в танце. Иногда танец красивый и повторяется, а иногда одну звезду вышвыривает прочь.",
+  "subject": "Чудеса физики",
+  "icon": "✨",
+  "order": 504,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

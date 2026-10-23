@@ -31,6 +31,29 @@
 | 🧩 Собери фразу — послушай английскую фразу и собери её из слов | Английский | [lessons/english-phrases-assemble](lessons/english-phrases-assemble) |
 | ⏳ Вчера, сейчас или завтра? — английские времена на слух | Английский | [lessons/english-tenses-listen](lessons/english-tenses-listen) |
 | 🔁 Скажи вчера и завтра — скажи предложение в другом времени | Английский | [lessons/english-tenses-say](lessons/english-tenses-say) |
+| 🎱 Волшебный бильярд — шарики из одной точки: в овале встречаются, на стадионе — хаос | Чудеса физики | [lessons/physics-billiard](lessons/physics-billiard) |
+| 🌈 Тысяча маятников — почти одинаковые двойные маятники разлетаются радугой | Чудеса физики | [lessons/physics-pendulums](lessons/physics-pendulums) |
+| 🦋 Бабочка Лоренца — облако точек расползается по крыльям странного аттрактора | Чудеса физики | [lessons/physics-lorenz](lessons/physics-lorenz) |
+| ✨ Три звезды — задача трёх тел: восьмёрка, треугольник и хаос | Чудеса физики | [lessons/physics-three-body](lessons/physics-three-body) |
+| 🎐 Маятниковая волна — маятники разной длины складываются в змейки и снова в линию | Чудеса физики | [lessons/physics-pendulum-wave](lessons/physics-pendulum-wave) |
+| 🔦 Две щели — волна и электроны по одному складываются в полосы | Чудеса физики | [lessons/physics-double-slit](lessons/physics-double-slit) |
+| 👻 Квантовая частица — волна-частица просачивается сквозь стену | Чудеса физики | [lessons/physics-quantum](lessons/physics-quantum) |
+| ⚛️ Облако электрона — орбитали атома водорода из тысяч точек | Чудеса физики | [lessons/physics-orbitals](lessons/physics-orbitals) |
+| 🔊 Поющий песок — фигуры Хладни: песок на дрожащей пластине | Чудеса физики | [lessons/physics-chladni](lessons/physics-chladni) |
+| 🏊 Свет на дне бассейна — каустики от ряби на воде | Чудеса физики | [lessons/physics-caustics](lessons/physics-caustics) |
+| 🫧 Пузырьковая камера — следы частиц закручиваются в магнитном поле | Чудеса физики | [lessons/physics-bubble-chamber](lessons/physics-bubble-chamber) |
+| 🔗 Кварки на резинке — струна между кварками рвётся и рождает новые кварки | Чудеса физики | [lessons/physics-quarks](lessons/physics-quarks) |
+| 🧲 Магнитное поле — опилки, компасы и силовые линии вокруг магнитов | Чудеса физики | [lessons/physics-magnets](lessons/physics-magnets) |
+| 🕳️ Чёрная дыра — свет звёзд и диска гнётся вокруг чёрной дыры | Чудеса физики | [lessons/physics-black-hole](lessons/physics-black-hole) |
+| 🪐 Батут пространства — планеты катятся по прогнутому пространству | Чудеса физики | [lessons/physics-spacetime](lessons/physics-spacetime) |
+| 🎻 Поющая струна — гармоники струны — видно и слышно | Чудеса физики | [lessons/physics-string](lessons/physics-string) |
+| 🌀 Скрытые измерения — многообразие Калаби — Яу из теории струн | Чудеса физики | [lessons/physics-calabi-yau](lessons/physics-calabi-yau) |
+| 🧊 Четырёхмерный куб — тессеракт вращается в четырёх измерениях | Чудеса физики | [lessons/physics-tesseract](lessons/physics-tesseract) |
+| 🎨 Жидкие краски — водить пальцем по жидкости и смотреть на вихри | Чудеса физики | [lessons/physics-fluid](lessons/physics-fluid) |
+| 🦓 Узоры Тьюринга — химия сама рисует полоски и пятна | Чудеса физики | [lessons/physics-turing](lessons/physics-turing) |
+| ⏳ Стрела времени — газы перемешиваются и не хотят разделяться обратно | Чудеса физики | [lessons/physics-entropy](lessons/physics-entropy) |
+| 🧭 Магнит из стрелочек — модель Изинга: при остывании появляются острова | Чудеса физики | [lessons/physics-ising](lessons/physics-ising) |
+| 🏖️ Песочная куча — песчинки и лавины рисуют фрактальный узор | Чудеса физики | [lessons/physics-sandpile](lessons/physics-sandpile) |
 | 🧙 Мерлин читает — напиши текст, и браузер прочитает его вслух; или продиктуй — и он запишет | Помощники | [lessons/merlin](lessons/merlin) |
 
 Уроки чтения собираются из общего движка [lessons/read-game](lessons/read-game) (два режима: собрать слово из карточек или прочитать вслух), а звуки букв и слогов берут из общей папки [lessons/russian](lessons/russian). Слова и картинки из «Гарри Поттера» — в общей папке [lessons/potter](lessons/potter), их используют два урока. Новый урок чтения — это папка с `game.json` (и своими словами или ссылкой на общие), без своего кода.
@@ -38,6 +61,8 @@
 Тренажёры на счёт и на дроби собираются из общего движка [lessons/math-drill](lessons/math-drill): новый тренажёр — это папка с `lesson.json` и `drill.json`, без своего кода.
 
 Английские уроки берут слова, картинки и звуки из общей папки [lessons/english](lessons/english) и ничего не копируют (см. «Общие материалы» ниже). Уроки с фразами собираются из общей папки [lessons/english-phrases](lessons/english-phrases): в ней 300 фраз с переводом, их звуки и движок игры, а урок — это `lesson.json` и `game.json` с режимом. Этим же движком собираются уроки времён; их 100 глаголов в трёх временах со звуками лежат в [lessons/english-tenses](lessons/english-tenses).
+
+Уроки «Чудеса физики» — симуляции сложных явлений на весь экран (хаос, квантовый мир, чёрная дыра, четвёртое измерение) — собираются из общего движка [lessons/physics](lessons/physics): урок — это `lesson.json` и `scene.json` (какая сцена, загадка и объяснение), а код каждой сцены — файл в `lessons/physics/game/src/`.
 
 ## Как устроено
 

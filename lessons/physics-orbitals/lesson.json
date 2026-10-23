@@ -1,0 +1,9 @@
+{
+  "title": "Облако электрона",
+  "description": "Электрон в атоме — не шарик, а светящееся облако. Сто тысяч точек рисуют настоящие формы орбиталей атома водорода: шар, гантель, клевер, цветок.",
+  "subject": "Чудеса физики",
+  "icon": "⚛️",
+  "order": 508,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

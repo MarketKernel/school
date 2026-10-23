@@ -1,0 +1,9 @@
+{
+  "title": "Квантовая частица",
+  "description": "Крошечная частица — это волна-радуга. Она может пройти сквозь стену, как привидение, и качаться в ямке, как вода в тазике.",
+  "subject": "Чудеса физики",
+  "icon": "👻",
+  "order": 507,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

@@ -1,0 +1,9 @@
+{
+  "title": "Стрела времени",
+  "description": "Красный и синий газ перемешиваются, стоит убрать перегородку. А можно ли повернуть время назад и разделить их обратно?",
+  "subject": "Чудеса физики",
+  "icon": "⏳",
+  "order": 521,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

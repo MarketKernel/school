@@ -1,0 +1,9 @@
+{
+  "title": "Свет на дне бассейна",
+  "description": "Солнце светит сквозь волны, и на дне бассейна дрожит яркая сетка света. Проведи пальцем по воде — и сетка оживёт.",
+  "subject": "Чудеса физики",
+  "icon": "🏊",
+  "order": 510,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

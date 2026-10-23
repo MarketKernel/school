@@ -1,0 +1,9 @@
+{
+  "title": "Поющий песок",
+  "description": "Металлическая пластинка звенит, а песок на ней сам собирается в узоры-снежинки. Чем выше звук, тем сложнее узор.",
+  "subject": "Чудеса физики",
+  "icon": "🔊",
+  "order": 509,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}

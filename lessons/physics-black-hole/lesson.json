@@ -1,0 +1,9 @@
+{
+  "title": "Чёрная дыра",
+  "description": "Облети настоящую чёрную дыру: она закручивает вокруг себя свет звёзд и раскалённый газ, как в фильме «Интерстеллар».",
+  "subject": "Чудеса физики",
+  "icon": "🕳️",
+  "order": 514,
+  "build": "(cd ../physics/game && npm ci) && node ../physics/game/build_scripts/build.mjs .",
+  "publish": "build"
+}
