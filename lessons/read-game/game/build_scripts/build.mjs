@@ -1,5 +1,6 @@
 // Builds one «Собери слово» reading lesson into <lesson>/build/: page, styles, code, words and pictures.
-// This engine is shared by read-syllables, read-potter, read-potter-aloud…; each of them calls it from its lesson.json:
+// This engine is shared by read-syllables, read-potter, read-potter-aloud, riddles, read-roblox…;
+// each of them calls it from its lesson.json:
 //   (cd ../read-game/game && npm ci) && node ../read-game/game/build_scripts/build.mjs .
 //
 // The lesson folder holds:
@@ -10,6 +11,7 @@
 //                     in russian/tools/syllables.py. Names keep their capital letter: «Гарри».
 //   data/pictures.tsv, images/, images.json — word pictures made by tools/draw.py; optional
 //   data/riddles.json, audio/ — riddle lessons only (mode "riddle", see below)
+//   data/pairs.json, audio/ — sentence lessons only (mode "sentence", see below)
 //   theme.css       — optional: colours and decorations on top of the engine's style.css
 // Words and pictures used by several lessons live in a shared folder instead (lessons/potter): the same data/,
 // images/ and images.json, plus shared.json. The lesson then names it in game.json "words" and in lesson.json
@@ -23,11 +25,18 @@
 //                  "assemble" code). Riddles come from the lesson's data/riddles.json ({ id, answer } each, made by
 //                  the lesson's tools), their sounds from its audio/<id>.mp3; a riddle without a sound is left out.
 //                  Every answer is played once, a level is complete when all its riddles are solved.
+//                  "sentence": read a short sentence aloud, speech recognition checks it word by word; the prize
+//                  is a longer text — its sound plays and its text is shown. Pairs come from the lesson's
+//                  data/pairs.json ({ id, read, reward } each), the prize sounds from its audio/<id>.mp3 (made by
+//                  the lesson's tools); a pair without a sound is left out. Like "aloud", it loads nothing from
+//                  shared folders. Every sentence is read once, a level is complete when all its sentences are read.
 //   words        — optional: shared folder with the words and pictures, e.g. "potter"
-//   levels       — exactly three, by tile count: 2–3, 4, 5 and more. Each is { name, icon, done }:
+//   levels       — exactly three, by tile count: 2–3, 4, 5 and more (sentences: 5–7, 8–9, 10 and more words).
+//                  Each is { name, icon, done }:
 //     name, icon — label and emoji of the level button
 //     done       — dialog when the level is complete: { icon?, title, text, button } («{n}» in text is the
-//                  number of words collected); the last level's dialog ends the game, its button starts over
+//                  number of words collected or sentences read); the last level's dialog ends the game, its button
+//                  starts over
 //   doneIcon     — emoji on the button of a complete level
 //   confetti     — emoji that rain down on a right answer
 //   pictureStyle — shared style prompt for tools/draw.py, so all the pictures look like one book
@@ -67,16 +76,18 @@ const fail = (text) => {
 
 const meta = readJson(join(lesson, "lesson.json"));
 const story = readJson(join(lesson, "game.json"));
-const MODES = ["assemble", "aloud", "riddle"];
+const MODES = ["assemble", "aloud", "riddle", "sentence"];
 const mode = story.mode ?? "assemble";
 if (!MODES.includes(mode)) fail(`mode должен быть ${MODES.join(", ")}, а не ${mode}`);
 const riddle = mode === "riddle";
+const sentence = mode === "sentence";
 // The page's code: a riddle lesson is "assemble" with the riddle's sound instead of the word's
 const code = riddle ? "assemble" : mode;
-const CODES = ["assemble", "aloud"];
-// Pictures and syllable sounds are only for "assemble" and "riddle"; "aloud" takes just the word list
-const media = mode !== "aloud";
+const CODES = ["assemble", "aloud", "sentence"];
+// Pictures and syllable sounds are only for "assemble" and "riddle"; "aloud" and "sentence" take just their texts
+const media = mode === "assemble" || riddle;
 if (riddle && story.words !== undefined) fail("у загадок слова свои — data/riddles.json, words не нужен");
+if (sentence && story.words !== undefined) fail("у фраз тексты свои — data/pairs.json, words не нужен");
 const needUses = (folder, what) => {
   if (!(meta.uses ?? []).includes(folder)) throw new Error(`${where}/lesson.json: добавьте "${folder}" в "uses" — оттуда ${what}`);
 };
@@ -85,7 +96,9 @@ if (story.words !== undefined) {
   if (media) needUses(story.words, "картинки");
 }
 if (media) needUses(SOURCE, "звуки");
-if (!Array.isArray(story.levels) || story.levels.length !== 3) fail("нужно ровно три уровня levels: 2–3, 4 и 5+ карточек");
+if (!Array.isArray(story.levels) || story.levels.length !== 3) {
+  fail(sentence ? "нужно ровно три уровня levels: фразы из 5–7, 8–9 и 10+ слов" : "нужно ровно три уровня levels: 2–3, 4 и 5+ карточек");
+}
 for (const level of story.levels) {
   const done = level.done ?? {};
   if (!level.name || !level.icon || !done.title || !done.text || !done.button) {
@@ -101,9 +114,24 @@ const wordsDir = story.words ? join(lesson, "..", story.words) : lesson;
 const wordsFile = join(wordsDir, "data", "words.txt");
 const picturesFile = join(wordsDir, "data", "pictures.tsv");
 const riddlesFile = join(wordsDir, "data", "riddles.json");
+const pairsFile = join(wordsDir, "data", "pairs.json");
 let words;
 let riddles; // answer -> audio/<id>.mp3
-if (riddle) {
+let rewards; // sentence -> { text, audio: audio/<id>.mp3 }
+if (sentence) {
+  const list = readJson(pairsFile);
+  for (const p of list) if (!p.id || !p.read || !p.reward) throw new Error(`${where}/data/pairs.json: у пары нужны id, read и reward: ${JSON.stringify(p)}`);
+  const reads = list.map((p) => p.read);
+  const twice = reads.filter((r, i) => reads.indexOf(r) !== i);
+  if (twice.length) throw new Error(`${where}/data/pairs.json: фраза встречается дважды: ${twice.join(" | ")}`);
+  const voiced = list.filter((p) => existsSync(join(lesson, "audio", `${p.id}.mp3`)));
+  if (!voiced.length) throw new Error(`${where}: нет звуков наград в audio/ — сначала озвучьте их`);
+  if (voiced.length < list.length) {
+    console.warn(`Без звука, пропущены: ${list.filter((p) => !voiced.includes(p)).map((p) => p.id).join(", ")}`);
+  }
+  rewards = Object.fromEntries(voiced.map((p) => [p.read, { text: p.reward, audio: `audio/${p.id}.mp3` }]));
+  words = Object.keys(rewards);
+} else if (riddle) {
   const list = readJson(riddlesFile);
   const voiced = list.filter((r) => existsSync(join(lesson, "audio", `${r.id}.mp3`)));
   if (!voiced.length) throw new Error(`${where}: нет звуков загадок в audio/ — сначала озвучьте их`);
@@ -151,8 +179,9 @@ const theme = join(lesson, "theme.css");
 writeFileSync(join(out, "theme.css"), existsSync(theme) ? readFileSync(theme, "utf8") : "/* no theme.css in the lesson */\n");
 // The lesson's own pictures are copied; those of a shared word folder are loaded from it
 if (media && !story.words && existsSync(join(lesson, "images"))) cpSync(join(lesson, "images"), join(out, "images"), { recursive: true });
-// Riddle sounds belong to the lesson: only the ones in the game are copied
-for (const file of Object.values(riddles ?? {})) cpSync(join(lesson, file), join(out, file));
+// Riddle and prize sounds belong to the lesson: only the ones in the game are copied
+const ownSounds = [...Object.values(riddles ?? {}), ...Object.values(rewards ?? {}).map((r) => r.audio)];
+for (const file of ownSounds) cpSync(join(lesson, file), join(out, file));
 
 // Words and sound lists go into data.js so no fetch is needed (fetch fails when the file is opened directly)
 const data = {
@@ -161,6 +190,7 @@ const data = {
   imageSource: media ? story.words ?? "" : "",
   words,
   ...(riddles && { riddles }),
+  ...(rewards && { rewards }),
   syllables: soundList("syllables.json"),
   letters: soundList("letters.json"),
   soft: soundList("soft.json"), // soft consonants «ть», «ль»…, if already voiced
@@ -171,7 +201,7 @@ writeFileSync(join(out, "data.js"), `const GAME_DATA = ${JSON.stringify(data)};\
 
 console.log(`Готово: ${out}`);
 console.log(`Режим: ${mode}${story.words ? `, слова${media ? " и картинки" : ""} из lessons/${story.words}` : ""}` +
-  (media ? "" : " (без картинок и звуков)"));
-console.log(`${riddle ? "Загадок" : "Слов"}: ${words.length}` + (media ? `, картинок: ${Object.keys(images).length}, ` +
+  (media ? "" : sentence ? " (без картинок и звуков слогов, звуки наград — из audio/)" : " (без картинок и звуков)"));
+console.log(`${riddle ? "Загадок" : sentence ? "Фраз" : "Слов"}: ${words.length}` + (media ? `, картинок: ${Object.keys(images).length}, ` +
   `звуков из lessons/${SOURCE}: слогов ${Object.keys(data.syllables).length}, букв ${Object.keys(data.letters).length}, ` +
   `мягких ${Object.keys(data.soft).length}` : ""));

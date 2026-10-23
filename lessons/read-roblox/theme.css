@@ -1,0 +1,15 @@
+/* «Секреты Роблокса» — bright block colours on top of the engine style (read-game/game/style.css) */
+
+:root {
+  --sky: #e4ecff;          /* pale blue sky over a baseplate */
+  --main: #e8463b;         /* main colour — brick red: microphone, main button */
+  --main-dark: #c2322a;
+  --main-soft: #ffe3e0;
+  --level-1: #f2b31c;      /* level colours: noob yellow / pro blue / legend purple */
+  --level-1-soft: #fff1c9;
+  --level-2: #3b82f6;
+  --level-2-soft: #dfeaff;
+  --level-3: #8b5cf6;
+  --level-3-soft: #ece4ff;
+  --grass: #5cb85c;        /* the green baseplate */
+}

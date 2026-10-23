@@ -219,8 +219,9 @@ def synthesize(text: str, instructions: str, provider: str, api_key: str, model:
             with urllib.request.urlopen(request, timeout=60) as response:
                 return response.read()
         except urllib.error.HTTPError as e:
-            # 429 — rate limited, 5xx — service failure: wait and retry
-            if e.code in (429, 500, 502, 503) and attempt < 2:
+            # 429 — rate limited, 5xx — service failure, 409 — ElevenLabs is still adding a Voice Library voice
+            # to the account (the first request with a new voice): wait and retry
+            if e.code in (409, 429, 500, 502, 503) and attempt < 2:
                 time.sleep(5 * (attempt + 1))
                 continue
             raise RuntimeError(f"{provider} вернул {e.code}: {e.read().decode('utf-8', 'replace')}") from e

@@ -51,8 +51,11 @@ button:disabled { cursor: default; }
 
 /* ---------- Modes: each page shows only its own blocks ---------- */
 
-body[data-mode="assemble"] .only-aloud,
-body[data-mode="aloud"] .only-assemble { display: none !important; }
+/* .only-mic — both reading-aloud modes: "aloud" (a word) and "sentence" */
+body[data-mode="assemble"] .only-mic,
+body:not([data-mode="assemble"]) .only-assemble,
+body:not([data-mode="sentence"]) .only-sentence,
+body[data-mode="sentence"] .not-sentence { display: none !important; }
 
 /* ---------- Levels ---------- */
 
@@ -341,6 +344,47 @@ body[data-mode="aloud"] .cell { width: auto; border: none; background: none; box
 .note { margin: 0; max-width: 520px; color: var(--muted); font-size: 16px; text-align: center; }
 .note[hidden] { display: none; }
 
+/* ---------- Reading a sentence aloud ---------- */
+
+body[data-mode="sentence"] .board { min-height: 22vh; }
+
+/* Big, calm text: words wrap between each other, a heard word turns green */
+.sentence {
+  margin: 0;
+  max-width: 920px;
+  padding: 18px 26px;
+  background: #fff;
+  border: 3px solid var(--accent);
+  border-radius: 28px;
+  box-shadow: 0 6px 0 var(--accent-soft);
+  font-size: clamp(28px, 4.4vw, 48px);
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: center;
+  animation: pop 0.35s ease-out;
+}
+.sentence-word { display: inline-block; padding: 0 2px; border-radius: 10px; transition: color 0.2s, background 0.2s; }
+.sentence-word.ok { color: var(--ok); background: var(--ok-bg); }
+/* After «Готово»: the key words that were not heard */
+.sentence-word.miss { text-decoration: underline wavy var(--bad); text-underline-offset: 8px; text-decoration-thickness: 2px; }
+/* A sentence read right: a green wave across the words */
+.sentence-word.ok[style] { animation: hop 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 60ms); }
+
+/* The prize: the text of the voiced secret, with a speaker to hear it again */
+.reward {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  max-width: 820px;
+  padding: 18px 20px 18px 24px;
+  background: var(--main-soft);
+  border-radius: 24px;
+  animation: pop 0.35s ease-out;
+}
+.reward[hidden] { display: none; }
+.reward-text { margin: 0; font-size: 21px; line-height: 1.5; }
+.reward .speaker.small { width: 48px; height: 48px; background: var(--main); color: #fff; box-shadow: 0 4px 0 var(--main-dark); }
+
 /* ---------- Confetti and grass ---------- */
 
 .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 20; }
@@ -398,6 +442,10 @@ body[data-mode="aloud"] .cell { width: auto; border: none; background: none; box
   .heard { font-size: 18px; }
   .mic { font-size: 24px; padding: 12px 32px; }
   .score { font-size: 18px; padding: 6px 12px; }
+  .sentence { padding: 12px 14px; border-radius: 22px; font-size: clamp(22px, 6.4vw, 30px); }
+  .reward { padding: 14px; gap: 10px; }
+  .reward-text { font-size: 17px; }
+  .reward .speaker.small { width: 40px; height: 40px; }
   .tiles { gap: 9px; }
   .tile { border-radius: 16px; padding-right: 6px; }
   .tile-text { font-size: 34px; padding: 4px 2px 4px 12px; min-width: 52px; }

@@ -1,6 +1,7 @@
-// «Собери слово» engine: what both game modes share — words, syllable split, sounds, levels, effects and the word cells.
-// One engine for several reading lessons: each lesson brings its words, pictures and story (game.json).
-// The page loads data.js, then this file, then one mode: assemble.js (tiles; riddle lessons too) or aloud.js (reading aloud).
+// «Собери слово» engine: what the game modes share — words, syllable split, sounds, levels, effects, the word cells
+// and speech recognition. One engine for several reading lessons: each lesson brings its words, pictures and story (game.json).
+// The page loads data.js, then this file, then one mode: assemble.js (tiles; riddle lessons too), aloud.js (reading
+// a word aloud) or sentence.js (reading a sentence aloud, a voiced text as the prize).
 // These are classic scripts, not modules, so they share one global scope.
 
 /** A level's end dialog from game.json; «{n}» in text is the number of words collected. */
@@ -19,6 +20,8 @@ declare const GAME_DATA: {
   imageSource: string; // shared folder with the pictures, or "" when they are copied into the lesson
   words: string[]; // as written, names with a capital letter: «Гарри»; a riddle answer may be several words
   riddles?: Record<string, string>; // riddle lessons only: answer -> the riddle's sound, audio/….mp3 next to the page
+  // sentence lessons only: sentence to read -> the prize, its text and sound (audio/….mp3 next to the page)
+  rewards?: Record<string, { text: string; audio: string }>;
   syllables: Record<string, string>;
   letters: Record<string, string>;
   soft: Record<string, string>; // soft consonants «ть», «ль»…
@@ -119,11 +122,16 @@ function playOne(url: string): Promise<void> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Plays one sound file (a riddle). Like playParts, it interrupts what is playing and is interrupted by the next call. */
+/** Plays one sound file (a riddle, a prize). Like playParts, it interrupts what is playing and is interrupted by the next call. */
 async function playFile(url: string): Promise<void> {
+  stopSounds();
+  await playOne(url);
+}
+
+/** Stops whatever is playing. */
+function stopSounds() {
   ++playToken;
   stopCurrent?.();
-  await playOne(url);
 }
 
 /** Plays the parts one after another. A new call interrupts the previous one. */
@@ -142,19 +150,24 @@ async function playParts(parts: string[]): Promise<void> {
 
 // ---------- Levels: names and dialogs come from the lesson (game.json) ----------
 
-// Difficulty is the number of tiles to assemble: «до-мик» is easier than «с-т-ра-ш-но», though both have two syllables
-interface Level {
+/** Which words (or sentences) go to a level; hint is the tooltip of its button. */
+interface Difficulty {
+  hint: string;
+  fits: (entry: string) => boolean;
+}
+
+interface Level extends Difficulty {
   name: string;
   icon: string;
   done: Dialog;
-  hint: string;
-  fits: (tiles: number) => boolean;
 }
 
-const DIFFICULTY = [
-  { hint: "слова из 2–3 частей", fits: (n: number) => n <= 3 },
-  { hint: "слова из 4 частей", fits: (n: number) => n === 4 },
-  { hint: "слова из 5 частей и больше", fits: (n: number) => n >= 5 },
+// Difficulty is the number of tiles to assemble: «до-мик» is easier than «с-т-ра-ш-но», though both have two syllables
+const tileCount = (entry: string) => splitPhrase(entry).parts.length;
+const DIFFICULTY: Difficulty[] = [
+  { hint: "слова из 2–3 частей", fits: (w) => tileCount(w) <= 3 },
+  { hint: "слова из 4 частей", fits: (w) => tileCount(w) === 4 },
+  { hint: "слова из 5 частей и больше", fits: (w) => tileCount(w) >= 5 },
 ];
 let LEVELS: Level[] = [];
 let doneIcon = "";
@@ -173,6 +186,8 @@ interface Mode {
   // Riddles: every word (answer) is played once, and a level is complete when all of its words are done.
   // Such a lesson keeps all its words, even one-syllable ones («Мел») and phrases («Дни недели»).
   everyWord?: boolean;
+  // Sentences: the mode's own levels instead of the tile counts; every entry is kept as it is
+  difficulty?: Difficulty[];
 }
 let mode: Mode;
 
@@ -244,14 +259,19 @@ function setLevel(index: number) {
   newRound();
 }
 
-/** One more word done on the current level; the dialog comes when the level is complete. */
-function addProgress() {
+/**
+ * One more word done on the current level. Returns true when this completes the level;
+ * the dialog then comes by itself, unless `announce` is false (the mode shows it later with showLevelDone).
+ */
+function addProgress(announce = true): boolean {
   const again = solved[level]!.has(entry);
   solved[level]!.add(entry);
-  if (mode.everyWord && again) return; // a riddle solved before doesn't count twice
+  if (mode.everyWord && again) return false; // a riddle solved before doesn't count twice
   const goal = goals[level]!;
   progress[level] = Math.min(goal, progress[level]! + 1);
-  if (progress[level] === goal) setTimeout(showLevelDone, 1200);
+  const complete = progress[level] === goal;
+  if (complete && announce) setTimeout(showLevelDone, 1200);
+  return complete;
 }
 
 // ---------- Effects: right/wrong chime and confetti ----------
@@ -315,9 +335,170 @@ function showLevelDone() {
   confetti();
 }
 
+// ---------- Reading aloud: speech recognition (Web Speech API, ru-RU) for "aloud" and "sentence" ----------
+
+// Not in the TypeScript DOM lib
+interface RecognitionResult {
+  readonly length: number;
+  readonly isFinal: boolean;
+  [index: number]: { transcript: string };
+}
+interface Recognition {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  continuous: boolean;
+  onresult: ((e: { results: { readonly length: number; [index: number]: RecognitionResult } }) => void) | null;
+  onerror: ((e: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+type RecognitionCtor = new () => Recognition;
+
+const speechApi = window as unknown as { SpeechRecognition?: RecognitionCtor; webkitSpeechRecognition?: RecognitionCtor };
+const Recognizer = speechApi.SpeechRecognition ?? speechApi.webkitSpeechRecognition ?? null;
+
+let recognition: Recognition | null = null;
+let listenTimer = 0;
+let quietTimer = 0;
+let micBlocked = false; // no permission or no microphone — only the manual button is left
+let lastError = ""; // recognizer error of the last attempt: no-speech, network…
+
+const canSpeak = () => Recognizer !== null && !micBlocked;
+// Without recognition (or offline) an adult listens and presses «Получилось»
+const manualMode = () => !canSpeak() || lastError === "network";
+
+/** How long to listen: `listen` at most in all, `quiet` of silence after something was heard ends the attempt. */
+interface ListenTiming {
+  listen: number;
+  quiet: number;
+}
+
+/**
+ * Turns the mic on. `matches` is asked about every alternative and about everything heard so far
+ * (a word read by syllables or a sentence may come as several results); the first match ends the attempt.
+ * onHeard gets the best guess while the child reads, onEnd the verdict. False if listening could not start.
+ */
+function startRecognition(matches: (text: string) => boolean, onHeard: (text: string) => void,
+  onEnd: (matched: boolean, error: string) => void, timing: ListenTiming): boolean {
+  if (!Recognizer || micBlocked) return false;
+  stopSounds(); // the mic must not hear the speaker
+  stopRecognition();
+
+  const rec = new Recognizer();
+  rec.lang = "ru-RU";
+  rec.interimResults = true; // show what is heard while the child reads
+  rec.maxAlternatives = 5; // the right answer is often not the first guess for a child's voice
+  rec.continuous = true; // a pause between syllables or words must not end the attempt
+  let matched = false;
+  let error = "";
+  rec.onresult = (e) => {
+    const best: string[] = [];
+    for (let i = 0; i < e.results.length; i++) {
+      const result = e.results[i]!;
+      best.push(result[0]?.transcript ?? "");
+      for (let j = 0; j < result.length; j++) if (matches(result[j]!.transcript)) matched = true;
+    }
+    const heard = best.join(" ").replace(/\s+/g, " ").trim();
+    if (matches(heard)) matched = true; // syllables may come as separate results: «га» + «ри»
+    onHeard(heard);
+    clearTimeout(quietTimer);
+    if (matched) rec.stop();
+    else if (heard) quietTimer = setTimeout(() => rec.stop(), timing.quiet);
+  };
+  rec.onerror = (e) => {
+    error = e.error;
+  };
+  rec.onend = () => {
+    clearTimeout(listenTimer);
+    clearTimeout(quietTimer);
+    if (recognition !== rec) return; // stopped on purpose: another word or another attempt
+    recognition = null;
+    lastError = matched ? "" : error;
+    if (["not-allowed", "service-not-allowed", "audio-capture"].includes(error)) micBlocked = true;
+    onEnd(matched, error);
+  };
+
+  recognition = rec;
+  lastError = "";
+  try {
+    rec.start();
+  } catch {
+    recognition = null;
+    return false;
+  }
+  listenTimer = setTimeout(() => rec.stop(), timing.listen);
+  return true;
+}
+
+/** Turns the mic off without a verdict (another word, another attempt). */
+function stopRecognition() {
+  const rec = recognition;
+  recognition = null;
+  clearTimeout(listenTimer);
+  clearTimeout(quietTimer);
+  rec?.abort();
+}
+
+/** 🎤 pressed while listening: the child has finished reading — check what was heard. */
+function finishRecognition() {
+  recognition?.stop();
+}
+
+/** The note under the buttons when reading can't be checked by voice. */
+function micNote(): string {
+  if (!Recognizer) return "Этот браузер не умеет распознавать речь (подойдут Chrome, Edge или Safari). Пусть взрослый послушает и нажмёт «Получилось».";
+  if (micBlocked) return "Разрешите микрофон в настройках браузера и обновите страницу. А пока взрослый может нажимать «Получилось».";
+  return "Распознавание речи работает только с интернетом. Пока взрослый может нажимать «Получилось».";
+}
+
+/** Only the letters: «Гар-ри!» → «гарри»; «ё» counts as «е» (recognizers often drop the dots). */
+const lettersOf = (text: string) => text.toLowerCase().replace(/ё/g, "е").replace(/[^а-я]/g, "");
+
+/** Edit distance from `want` to the closest piece of `said`: the word may sit inside a longer phrase. */
+function closest(said: string, want: string): number {
+  let prev: number[] = Array.from({ length: said.length + 1 }, () => 0);
+  for (let i = 1; i <= want.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= said.length; j++) {
+      row[j] = Math.min(prev[j]! + 1, row[j - 1]! + 1, prev[j - 1]! + (want[i - 1] === said[j - 1] ? 0 : 1));
+    }
+    prev = row;
+  }
+  return Math.min(...prev);
+}
+
+// ---------- Saved score (⭐ of the reading-aloud modes) ----------
+
+const scoreKey = () => `read-game:${GAME_DATA.lesson}:score`;
+
+function loadScore(): number {
+  try {
+    return Number(localStorage.getItem(scoreKey())) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveScore(score: number) {
+  try {
+    localStorage.setItem(scoreKey(), String(score));
+  } catch {
+    // Private mode or blocked storage: the score lives until the page is closed
+  }
+}
+
 // ---------- Rendering ----------
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+function bump(el: HTMLElement) {
+  el.classList.remove("bump");
+  void el.offsetWidth; // restart the animation
+  el.classList.add("bump");
+}
 
 const SPEAKER_SVG =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>' +
@@ -421,18 +602,21 @@ function startGame(gameMode: Mode): boolean {
   audioBase = sharedBase(GAME_DATA.source) + "audio/";
   imageBase = GAME_DATA.imageSource ? sharedBase(GAME_DATA.imageSource) : "";
   const story = GAME_DATA.story;
-  LEVELS = story.levels.map((lvl, i) => ({ ...lvl, ...DIFFICULTY[i]! }));
+  const difficulty = gameMode.difficulty ?? DIFFICULTY;
+  LEVELS = story.levels.map((lvl, i) => ({ ...lvl, ...difficulty[i]! }));
   doneIcon = story.doneIcon;
   confettiIcons = story.confetti;
   progress = LEVELS.map(() => 0);
   seen = LEVELS.map(() => new Set<string>());
   solved = LEVELS.map(() => new Set<string>());
-  // Only Russian words with at least two syllables (two vowels); riddle answers are all kept (everyWord).
-  // Split into levels by tile count
-  const words = gameMode.everyWord
-    ? GAME_DATA.words.filter((w) => /^[а-яё]+( [а-яё]+)*$/.test(lower(w)))
-    : GAME_DATA.words.filter((w) => /^[а-яё]+$/.test(lower(w)) && syllableCount(lower(w)) >= 2);
-  wordsByLevel = LEVELS.map((lvl) => words.filter((w) => lvl.fits(splitPhrase(w).parts.length)));
+  // Only Russian words with at least two syllables (two vowels); riddle answers are all kept (everyWord),
+  // sentences too. Split into levels by tile count, or by the mode's own difficulty
+  const words = gameMode.difficulty
+    ? GAME_DATA.words
+    : gameMode.everyWord
+      ? GAME_DATA.words.filter((w) => /^[а-яё]+( [а-яё]+)*$/.test(lower(w)))
+      : GAME_DATA.words.filter((w) => /^[а-яё]+$/.test(lower(w)) && syllableCount(lower(w)) >= 2);
+  wordsByLevel = LEVELS.map((lvl) => words.filter(lvl.fits));
   goals = wordsByLevel.map((list) => (gameMode.everyWord ? list.length : WORDS_PER_LEVEL));
   newRound();
   return true;

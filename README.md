@@ -10,6 +10,7 @@
 | 🪄 Волшебные слова — чтение по слогам, слова из «Гарри Поттера» | Чтение | [lessons/read-potter](lessons/read-potter) |
 | 🎤 Прочитай вслух — слова из «Гарри Поттера» по слогам, браузер слушает и проверяет | Чтение | [lessons/read-potter-aloud](lessons/read-potter-aloud) |
 | 🦉 Загадки — послушать загадку и собрать отгадку по слогам | Чтение | [lessons/riddles](lessons/riddles) |
+| 🎮 Секреты Роблокса — прочитай вслух фразу про Роблокс и получи в награду секрет, совет или загадку | Чтение | [lessons/read-roblox](lessons/read-roblox) |
 | ➕ Сложение — числа от 0 до 9 | Математика | [lessons/math-addition](lessons/math-addition) |
 | ➖ Вычитание — сложение наоборот | Математика | [lessons/math-subtraction](lessons/math-subtraction) |
 | ✖️ Умножение — таблица от 0 до 9 | Математика | [lessons/math-multiplication](lessons/math-multiplication) |
